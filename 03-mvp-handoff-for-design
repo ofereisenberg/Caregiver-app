@@ -1,6 +1,6 @@
 # MVP Handoff Summary — Caregiver Coordination App
 **Purpose:** Input doc for Claude Design wireframing session
-**Status:** v0.1 — reflects research/ideation as of 2026-06-22
+**Status:** v0.2 — updated 2026-06-22 to reflect T1–T6 technical decisions
 **Related docs:** `01-situation-and-problem-space.md`, `02-interview-research-log.md`
 
 ---
@@ -61,17 +61,39 @@ A shared, low-friction task system for the care circle, with a calendar view and
 - **Pattern 3 — Process → Appointment:** Deferred post-MVP (requires Process/Theme object layer)
 
 ## 6. Screens needed for wireframe
-1. **Task list view** — shared + personal tasks, priority/urgency signal
-2. **Add task** — low-friction; title-only quick-add, optional fields revealed progressively
-3. **Task detail** — view/edit recurrence, assignee, visibility, progress note; option to convert to appointment on completion
-4. **Add appointment** — title, date/time, duration, assignee, optional prep tasks; no sync UI here — sync is handled by user settings, not per appointment
-5. **Appointment detail** — shows prep tasks as a checklist; subtle Google Calendar sync indicator if user has sync enabled
-6. **Calendar view** — in-app; shows both tasks (with dates) and appointments; appointments visually distinct
-7. **Reminder/notification** — how a reminder surfaces to the user
-8. **Settings screen** — two sections:
-   - *Google Calendar:* connect/disconnect button, connection status ("Connected as name@gmail.com"), sync preference (My appointments / All appointments / No sync)
-   - *Notifications:* reminder preferences (how far in advance, which types of items)
-9. **Onboarding** — lightweight first-time setup; Google Calendar connection presented as optional ("Connect later" escape hatch clearly visible — consistent with low-friction principle)
+
+### Auth & onboarding flow
+1. **Magic link — enter email** — single field, "Send me a sign-in link" button; no password. Used for both first-time signup and all subsequent logins
+2. **Magic link — check your email** — confirmation screen shown after email is submitted; "Resend" option visible
+3. **First-time profile setup** — display name only; shown once after first magic link authentication
+4. **Onboarding — care circle** — two paths presented:
+   - *Create a new circle* (becomes admin)
+   - *Join with an invite link* (if they already have one)
+   - Google Calendar connection offered here as optional step — "Connect later" escape hatch clearly visible
+5. **Invite flow (admin)** — admin generates an invite link; UI to copy/share it; shows current circle members
+
+### Core app screens
+6. **Task list view** — shared + personal tasks, priority/urgency signal
+7. **Add task** — low-friction; title-only quick-add, optional fields revealed progressively
+8. **Task detail** — view/edit recurrence, assignee, visibility, progress note; option to convert to appointment on completion
+9. **Add appointment** — title, date/time, duration, assignee, optional prep tasks; no sync UI here — sync is handled by user settings, not per appointment
+10. **Appointment detail** — shows prep tasks as a checklist; subtle Google Calendar sync indicator if user has sync enabled
+11. **Calendar view** — in-app; shows both tasks (with dates) and appointments; appointments visually distinct
+
+### Notifications & digest
+12. **Daily digest modal** — shown on first app open each day (overlays the main task list); shows today's appointments, tasks due today, upcoming items in next 3 days, open tasks assigned to me; dismissed with a single tap; should feel like a gentle morning briefing, not an alert
+13. **Event-driven push notification** — how an incoming push notification looks on the device (lock screen / banner); e.g. "Anna assigned you a task: arrange transport"
+
+### Settings (two levels — do not conflate)
+14. **User settings screen** — personal preferences:
+    - *Google Calendar:* connect/disconnect, connection status ("Connected as name@gmail.com"), sync preference (My appointments / All appointments / No sync)
+    - *Notifications:* which event types trigger a push (task assigned, appointment added, task completed, etc.)
+    - *Daily digest:* on/off toggle, preferred time
+15. **Circle admin screen** — visible to circle admin only:
+    - Circle name
+    - Member list with roles
+    - Generate / revoke invite link
+    - *(System config has no UI — edited directly in Supabase Studio by developer)*
 
 ## 7. Explicitly OUT of scope for v0
 - Documents/attachments
@@ -81,6 +103,12 @@ A shared, low-friction task system for the care circle, with a calendar view and
 - Process/Theme object type (Pattern 3 relationship)
 - Mother as a user / dignity-aware visibility model
 - Any authorization system beyond the simple "only me" flag
+- Scheduled / timed push reminders (e.g. "reminder 1 hour before appointment") — Google Calendar handles this via sync
+- Email digest — Google Calendar covers reminder-via-email for free
+- PIN / biometric app lock
+- Offline mode (read cache or draft queue)
+- System config UI — developer edits directly in Supabase Studio
+- Multi-circle support
 
 ## 8. Design tone/feel (for Claude Design prompt)
 **Calm and warm, usability-first.** Explicitly not aiming for "cool" or trend-driven visual design — the priority is reducing cognitive load for someone already stressed, not impressing anyone. Practical implications for the wireframe:
@@ -93,18 +121,58 @@ A shared, low-friction task system for the care circle, with a calendar view and
 ---
 
 ## 9. Suggested starting prompt for Claude Design
-> "Design a mobile-first coordination app for three sisters jointly caring for their mother. There are two first-class object types: Tasks (to-do items with optional recurrence, assignee, private/shared visibility flag, and a free-text progress note) and Appointments (specific datetime events, always shared with the whole care circle in-app, with optional child prep tasks as a checklist).
+
+> "Design a mobile-first coordination app for three sisters jointly caring for their mother with Alzheimer's. The app is called [TBD] and the care group is called a 'care circle'.
 >
-> Google Calendar sync is optional and per-user — not per appointment. Each user can set: 'sync my appointments only', 'sync all appointments', or 'no sync'. This is controlled in Settings, not on the appointment creation screen. If a user hasn't connected Google Calendar, the app works fully without it — appointments simply stay in-app.
+> **Two first-class object types:**
+> - **Task** — to-do item with optional recurrence, assignee (one care circle member), private/shared visibility flag, and a free-text progress note
+> - **Appointment** — specific datetime event, always shared with the whole care circle in-app, with optional child prep tasks as a checklist
 >
-> Core screens to wireframe:
-> 1. Shared list view — tasks and appointments together, with priority/urgency signal
-> 2. Add task — title-first, minimal friction, optional fields (recurrence, assignee, visibility) revealed progressively
-> 3. Task detail — with option to convert to appointment on completion
-> 4. Add appointment — title, date/time, duration, assignee, optional prep tasks; no sync UI here
-> 5. Appointment detail — prep tasks as checklist, subtle sync status indicator
-> 6. In-app calendar view — tasks and appointments shown together, appointments visually distinct
-> 7. Settings screen — two sections: (a) Google Calendar: connect/disconnect, connection status, sync preference selector (my appointments / all / none); (b) Notifications: reminder preferences
-> 8. Onboarding — lightweight first-time setup; Google Calendar connection offered but skippable ('Connect later' clearly visible)
+> **Auth flow (magic link — no passwords):**
+> - Sign in screen: single email field, 'Send me a sign-in link' button
+> - Confirmation screen: 'Check your email' with resend option
+> - First-time only: display name entry (one field)
+> - First-time only: care circle setup — create a new circle (becomes admin) or join via invite link
+> - Google Calendar connection offered during onboarding as optional — 'Connect later' escape hatch always visible
 >
-> Visual tone: calm and warm, usability-first — not 'cool' or trend-driven. Generous whitespace, soft muted color palette, plain friendly language, minimal visible choices per screen. Progressive disclosure over dense forms. Users are family caregivers under emotional strain — the app should feel reassuring, not demanding."
+> **Invite flow:**
+> - Circle admin can generate a shareable invite link (copied to clipboard, shared via WhatsApp etc.)
+> - Recipient taps link → goes through magic link auth → lands in the circle automatically
+>
+> **Google Calendar sync:**
+> - Optional and per-user — not per appointment
+> - Three options per user: sync my appointments only / sync all appointments / no sync
+> - Controlled in user Settings, not on the appointment creation screen
+> - App works fully without it — no degraded experience beyond missing the Calendar push
+>
+> **Notifications:**
+> - Event-driven push notifications: task assigned to me, new shared task, appointment created/changed, task marked complete
+> - No scheduled timed reminders in v0 — appointment reminders handled by Google Calendar natively
+> - Daily digest modal: shown on first app open each day; gentle morning briefing showing today's appointments, tasks due today, upcoming items (3-day window), open tasks assigned to me; dismissed with one tap
+>
+> **Core screens to wireframe:**
+>
+> Auth & onboarding:
+> 1. Magic link — enter email
+> 2. Magic link — check your email (post-submit confirmation)
+> 3. First-time profile — display name only
+> 4. Care circle setup — create or join; Google Calendar connection offered here as optional
+> 5. Invite management (admin) — generate/share invite link, view current members
+>
+> Main app:
+> 6. Task list view — shared + personal tasks, urgency/priority signal
+> 7. Add task — title-first, minimal friction; recurrence, assignee, visibility revealed progressively
+> 8. Task detail — view/edit all fields; option to convert to appointment on completion
+> 9. Add appointment — title, date/time, duration, assignee, optional prep tasks; no sync UI here
+> 10. Appointment detail — prep tasks as checklist; subtle sync status indicator (synced ✓ / failed)
+> 11. Calendar view — tasks and appointments together; appointments visually distinct
+>
+> Notifications:
+> 12. Daily digest modal — gentle first-open-of-day briefing; one-tap dismiss
+> 13. Push notification (device banner/lock screen) — e.g. 'Anna assigned you a task: arrange transport'
+>
+> Settings:
+> 14. User settings — Google Calendar (connect/disconnect, status, sync preference); Notifications (which event types); Daily digest (on/off, time)
+> 15. Circle admin screen — circle name, member list, invite link management
+>
+> **Visual tone:** Calm and warm, usability-first — not 'cool' or trend-driven. Generous whitespace, soft muted palette, plain friendly language, minimal visible choices per screen. Progressive disclosure over dense forms. The daily digest should feel like a gentle morning briefing, not a dashboard. Auth screens should feel welcoming and simple — this is a family app, not an enterprise tool. Users are caregivers under emotional strain — the app should feel reassuring, not demanding."
