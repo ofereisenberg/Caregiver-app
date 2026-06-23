@@ -264,3 +264,111 @@ No exporting multiple components from a single file (except tightly coupled sub-
 5. Internal — components
 6. Types
 7. Assets / styles
+
+---
+
+## 11. AI Voice Input Service
+
+### 11.1 Single reusable service for all AI-powered input
+All voice capture, transcription, and natural language parsing is handled exclusively through `services/voiceInput.ts`. No screen, component, or other service implements its own AI parsing directly. This service is schema-agnostic — callers pass a target schema and receive structured JSON back.
+
+```
+VoiceInputService
+  ├── record()              → captures audio via expo-av
+  ├── transcribe()          → audio file → text (Whisper API)
+  └── parse(text, schema, context) → Claude API → structured JSON
+```
+
+### 11.2 Always use Haiku for parsing
+The voice parsing service always uses `claude-haiku-4-5`. Never use a larger model for structured extraction — it is not justified by the task complexity and costs 10–20x more.
+
+### 11.3 Cap token consumption
+All Claude API calls from VoiceInputService must set `max_tokens: 300`. System prompts for parsing are kept under 300 tokens. The prompt contains only: output schema, brief instructions, today's date, and care circle member list.
+
+### 11.4 Confirmation before save — always
+The parsed result pre-fills the relevant form (Add Task or Add Appointment screen). The user always reviews and confirms before saving. Voice input never saves directly to the database without user confirmation.
+
+### 11.5 Graceful degradation
+If transcription or parsing fails, the user is dropped into the normal manual entry form with a brief non-alarming message. Voice input is an enhancement — its failure must never block task/appointment creation.
+
+---
+
+## 12. Environment & Configuration
+
+### 12.1 All secrets and environment-specific values live in `.env`
+No API keys, URLs, model names, token limits, or tunable values are hardcoded in source files. Every value that could change between environments (dev / staging / prod) or needs to be adjusted without a code change lives in `.env`.
+
+```bash
+# .env — example entries
+EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+OPENAI_API_KEY=your-whisper-key
+ANTHROPIC_API_KEY=your-claude-key
+VOICE_PARSE_MODEL=claude-haiku-4-5
+VOICE_PARSE_MAX_TOKENS=300
+VOICE_TRANSCRIPTION_MAX_SECONDS=120
+DAILY_DIGEST_LOOKAHEAD_DAYS=3
+```
+
+### 12.2 Config is centralised in `constants/config.ts`
+No file reads from `process.env` directly except `constants/config.ts`. All other files import from there. This means there is exactly one place to look when a config value needs changing, and one place to catch missing env vars at startup.
+
+```tsx
+// constants/config.ts
+export const config = {
+  supabase: {
+    url: process.env.EXPO_PUBLIC_SUPABASE_URL!,
+    anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+  },
+  ai: {
+    anthropicKey: process.env.ANTHROPIC_API_KEY!,
+    openaiKey: process.env.OPENAI_API_KEY!,
+    voiceParseModel: process.env.VOICE_PARSE_MODEL ?? 'claude-haiku-4-5',
+    voiceParseMaxTokens: Number(process.env.VOICE_PARSE_MAX_TOKENS ?? 300),
+    voiceTranscriptionMaxSeconds: Number(process.env.VOICE_TRANSCRIPTION_MAX_SECONDS ?? 120),
+  },
+  digest: {
+    lookaheadDays: Number(process.env.DAILY_DIGEST_LOOKAHEAD_DAYS ?? 3),
+  },
+} as const;
+```
+
+### 12.3 `.env` is never committed
+`.env` is always in `.gitignore`. A `.env.example` file with all required keys (but no real values) is committed instead, so any new developer knows exactly what to populate.
+
+```bash
+# .env.example — committed to version control
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+VOICE_PARSE_MODEL=claude-haiku-4-5
+VOICE_PARSE_MAX_TOKENS=300
+VOICE_TRANSCRIPTION_MAX_SECONDS=120
+DAILY_DIGEST_LOOKAHEAD_DAYS=3
+```
+
+### 12.4 Validate required env vars at startup
+`constants/config.ts` checks that all required values are present when the app starts. A missing required key throws an explicit error with the key name — not a silent undefined crash somewhere deep in the app.
+
+```tsx
+// In constants/config.ts
+function require(key: string): string {
+  const value = process.env[key];
+  if (!value) throw new Error(`Missing required environment variable: ${key}`);
+  return value;
+}
+```
+
+### 12.5 EXPO_PUBLIC_ prefix for client-safe values only
+Expo exposes any env var prefixed with `EXPO_PUBLIC_` to the client bundle — meaning it's visible to anyone who inspects the app. Only the Supabase anon key and URL are safe to expose this way. API keys for OpenAI, Anthropic, and any other third-party services must never have the `EXPO_PUBLIC_` prefix and must only be used server-side (Supabase Edge Functions).
+
+```bash
+# ✅ Safe to expose to client
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+
+# ❌ Never expose to client — server/Edge Function only
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+```
