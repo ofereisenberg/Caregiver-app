@@ -240,7 +240,36 @@ Any code for a deferred/post-MVP feature is wrapped in a feature flag read from 
 
 ---
 
-## 10. Code Hygiene
+## 10. Testing
+
+### 10.1 Suggest tests when they add clear value
+
+When writing or modifying code, proactively suggest a test if the code falls into any of these categories:
+
+- **Pure utility functions** (`utils/`) — easiest to test, highest value; suggest a unit test alongside the implementation
+- **Non-trivial derived state in hooks** — e.g. overdue calculation, recurrence logic, visibility filtering
+- **Service functions with conditional logic** — e.g. sync preference branching, invite expiry checks
+- **Bug fixes** — always suggest a test that would have caught the bug
+
+Do not suggest tests for: thin components, navigation wiring, or code that is essentially a direct Supabase call with no logic.
+
+### 10.2 Test file placement
+
+Co-locate tests with the file they cover:
+
+```text
+utils/dateUtils.ts       → utils/__tests__/dateUtils.test.ts
+hooks/useTaskList.ts     → hooks/__tests__/useTaskList.test.ts
+services/tasks.ts        → services/__tests__/tasks.test.ts
+```
+
+### 10.3 No test infrastructure overhead for a single test
+
+If a test requires significant setup (test database, auth mocking, complex fixtures), note the requirement and defer unless the user asks to set it up. A suggested test that can't be run is worse than no suggestion.
+
+---
+
+## 11. Code Hygiene
 
 ### 10.1 No commented-out code in commits
 Dead code is deleted, not commented out. Version control is the history — use it.
