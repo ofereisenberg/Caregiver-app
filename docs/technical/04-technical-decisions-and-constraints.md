@@ -58,7 +58,7 @@ Two first-class object types. Do not conflate — they have different fields, be
 | duration_minutes | integer | No | |
 | assignee | user ref | No | One person from the care circle |
 | prep_tasks | Task[] | No | Child tasks (Pattern 2) — linked by parent_appointment_id on Task |
-| shared | boolean | Yes | Always `true` in v0 — all appointments visible to whole care circle |
+| visibility | enum | Yes | `private` ("only me") or `shared` (visible to whole care circle) — default `shared`. Private appointments still push to the creator's own Google Calendar if sync is enabled, but are not visible to other circle members in-app |
 | google_calendar_event_id | string | No | Populated after successful Google Calendar push; null if sync not enabled or push failed |
 | created_by | user ref | Yes | |
 | created_at | timestamp | Yes | |
@@ -87,7 +87,7 @@ Two first-class object types. Do not conflate — they have different fields, be
 | Option | Behavior |
 |---|---|
 | `sync_mine` | Only appointments where I am the assignee are pushed to my Google Calendar |
-| `sync_all` | All care circle appointments (mine + others') are pushed to my Google Calendar |
+| `sync_all` | All care circle appointments visible to me (mine + others' shared ones) are pushed to my Google Calendar |
 | `no_sync` | No Google Calendar connection; all appointments stay in-app only |
 
 ### Sync error handling (to design for)
