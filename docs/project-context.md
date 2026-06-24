@@ -95,20 +95,7 @@ Child prep tasks linked via `parent_appointment_id` on Task (Pattern 2).
 
 ---
 
-## 6. Key Conventions
-
-- **No business logic in UI components** — validation, data fetching, permission checks all belong in hooks or services
-- **All Supabase calls in `services/`** — no component imports `supabase` directly
-- **All env var reads in `constants/config.ts`** — no other file reads `process.env`
-- **API keys never in client bundle** — Whisper and Anthropic keys are server-side only (Edge Functions)
-- **RLS is the security authority** — app may hide UI for UX, but the database enforces access
-- **Private tasks/appointments** — `visibility: 'private'` means creator-only; enforced by RLS. Private appointments still push to creator's own Google Calendar if sync is enabled.
-- **Google Calendar sync is per-user, not per-appointment** — controlled in Settings; no per-appointment override in v0
-- **One care circle per user in v0** — multi-circle deferred
-
----
-
-## 7. Active Design Docs
+## 6. Active Design Docs
 
 | Doc | Topic |
 |---|---|
@@ -119,7 +106,7 @@ Child prep tasks linked via `parent_appointment_id` on Task (Pattern 2).
 
 ---
 
-## 8. Known Open Items
+## 7. Known Open Items
 
 - Supabase project not yet created (URL + anon key not in `.env`)
 - Schema / migrations not yet written

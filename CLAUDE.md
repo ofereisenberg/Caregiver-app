@@ -2,7 +2,6 @@
 
 # CLAUDE.md — Coding Principles & Conventions
 **Project:** Caregiver Coordination App
-**Stack:** Expo (React Native) + Supabase
 **Purpose:** Standing instructions for all code generation in this project. Apply these principles to every file, every session, without exception.
 **Last updated:** 2026-06-24
 
