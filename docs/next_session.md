@@ -6,64 +6,123 @@
 
 ## Current Status
 
-Schema live in Supabase. Navigation skeleton complete. Ready to build screens.
+Core app flow is complete end-to-end. Tasks and appointments can be created, viewed, edited, and deleted. The Calendar tab is live. Ready for thorough emulator testing at the start of next session before moving to Settings screens and push notifications.
 
-**Next up:** Enter Email screen (first real screen) → full auth flow
+**Next up:** Test the full flow on the emulator, then build Settings screens.
 
 ---
 
-## What was done this session (2026-06-24) — Dependencies, Schema, Design tokens, Navigation
+## What was done this session (2026-06-24) — Full Core Feature Build
 
-- Installed all MVP dependencies: `@react-navigation/native`, `native-stack`, `bottom-tabs`, `react-native-screens`, `react-native-safe-area-context`, `expo-secure-store`, `expo-av`, `expo-notifications`, `@react-native-community/netinfo`
-- Updated `src/services/supabase.ts` to use `expo-secure-store` for session persistence (`autoRefreshToken`, `persistSession`, `detectSessionInUrl: false`)
-- Wrote `supabase/migrations/20260624120000_initial_schema.sql` — full schema: 3 enums, 7 tables, 8 indexes, 4 helper functions (`is_circle_member`, `is_circle_admin`, `shares_circle_with`, `create_care_circle`), trigger (`handle_new_user`), 18 RLS policies, Realtime on tasks + appointments
-- Applied migration to Supabase via CLI (`supabase db push`)
-- Generated TypeScript types → `src/types/database.ts` (from live schema, not hand-written)
-- Extracted design tokens from `Care for Mutti - Design System.dc.html` and replaced placeholder `src/constants/theme.ts` with full token set: colors (canvas, surface, sage palette, overdue, waiting, neutrals, text), spacing, font sizes, font weights, border radii, shadows
-- Added Section 10 (Testing) to `CLAUDE.md` — when to suggest tests, where to put test files, when to defer
-- Created navigation skeleton:
-  - `src/navigation/types.ts` — typed param lists for AuthStack, AppStack, BottomTabParamList
-  - `src/hooks/useAuthState.ts` — Supabase session listener; drives auth gate
-  - `src/navigation/AuthNavigator.tsx` — EnterEmail → CheckEmail → SetupProfile → SetupCircle → InviteManagement
-  - `src/navigation/AppNavigator.tsx` — bottom tabs (Tasks/Calendar) + modal stack (AddTask, AddAppointment, DailyDigest) + push screens (TaskDetail, AppointmentDetail, UserSettings, CircleAdmin, InviteManagement)
-  - `src/navigation/RootNavigator.tsx` — auth gate: spinner → Auth or App based on Supabase session
-  - `App.tsx` — SafeAreaProvider + NavigationContainer + RootNavigator
-  - 14 screen stubs (auth/app/settings) — all placeholder, ready to fill in
+### New files created
 
-### Design files location
+#### Services
 
-`C:\Users\ofere\Projects\MVP handoff for design-handoff\mvp-handoff-for-design\project\`
+- `src/services/tasks.ts` — `getTask`, `getTasksForCircle`, `getTasksForAppointment`, `createTask`, `updateTask`, `completeTask`, `deleteTask`
+- `src/services/appointments.ts` — `getAppointment`, `getAppointmentsForCircle`, `createAppointment`, `updateAppointment`, `deleteAppointment`
 
-- `Care for Mutti - Design System.dc.html` — full design system (already extracted into theme.ts)
-- `Caregiver Coordination Wireframes.dc.html` — interactive wireframes for all 15 screens (use as visual spec per screen)
-- `screenshots/` — PNG screenshots of each wireframe screen
+#### Hooks
+
+- `src/hooks/useCircle.ts` — circle + members from auth session
+- `src/hooks/useTaskList.ts` — fetch + Realtime sub + optimistic complete, returns grouped sections
+- `src/hooks/useTask.ts` — single task fetch
+- `src/hooks/useAppointmentList.ts` — fetch + Realtime sub for calendar
+- `src/hooks/useAppointment.ts` — single appointment + prep tasks
+
+#### Components / Utils
+
+- `src/components/TaskItem.tsx` — task row: checkbox, title, Overdue/Repeats badges, assignee avatar
+- `src/utils/taskGrouping.ts` — `groupTasksIntoSections`, `isTaskOverdue`, `formatDueLabel`
+
+### Screens built (all were stubs)
+
+- **`TaskListScreen`** — header, All/Mine segmented control, SectionList (Today/This week/Later), FAB
+- **`AddTaskScreen`** — bottom sheet: title input, expandable Repeat/Assign/When/Only me rows
+- **`TaskDetailScreen`** — full detail: editable field rows, progress note with Save, complete checkbox, Make appointment, Delete
+- **`AddAppointmentScreen`** — date chips (next 7 days) + time chips, Duration, With; pre-fills from source task when launched via "Make an appointment"; navigates to AppointmentDetail on save
+- **`AppointmentDetailScreen`** — title/date/duration, With, Visibility, prep task checklist with completion checkboxes, "Add a prep task" → AddTask, Delete
+- **`CalendarScreen`** — agenda list grouped by date; appointments (square sage marker) + tasks with due dates (circle grey marker); + FAB
+
+### Other changes
+
+- `AppNavigator.tsx` — added Ionicons tab icons (checkmark-circle-outline / calendar-outline)
+- `navigation/types.ts` — `AddAppointment` params changed from `undefined` to `{ taskId?: string }`
+- `tsconfig.json` — added `exclude: ["supabase/functions"]` to suppress Deno type errors
+- `package.json` — added `@expo/vector-icons`, `@react-native-community/datetimepicker`
+- `src/hooks/useAuthState.ts` — deleted (was unused)
+
+### Bugs fixed this session
+
+- **Delete/complete not reflected in task list** — added `useFocusEffect` to `TaskListScreen` so the list re-fetches on focus (catches deletes, completes, and edits from the detail screen)
+- **DateTimePicker `onChange` deprecation warning** — replaced with `onValueChange` on component and `onValueChange` callback in `DateTimePickerAndroid.open()`
+
+---
+
+## Testing checklist for next session start
+
+Work through this before building anything new:
+
+### Task flow
+
+- [ ] Create a task (title only) → appears in list
+- [ ] Create a task with repeat, assignee, due date, Only me → fields shown correctly
+- [ ] Tap task → detail screen loads all fields
+- [ ] Edit assignee, repeat, date, visibility in detail → persists after leaving and returning
+- [ ] Add/edit progress note → saves
+- [ ] Complete task (checkbox) → removed from list
+- [ ] Delete task → removed from list
+- [ ] Mine filter → shows only tasks assigned to you
+
+### Appointment flow
+
+- [ ] Calendar tab shows empty state
+- [ ] Tap + in Calendar → add appointment sheet; date chips show correct dates
+- [ ] Select date + time + optional duration/assignee → Add appointment → navigates to detail
+- [ ] Appointment appears in Calendar tab on correct date
+- [ ] "Make an appointment" from task detail → title pre-filled
+- [ ] Add prep task from appointment detail → task appears in checklist
+- [ ] Complete a prep task → checkbox fills, count updates
+- [ ] Delete appointment → gone from calendar
 
 ---
 
 ## Next steps
 
-### Step 2 — Auth flow screens (build in order)
+### Step 7 — Settings screens
 
-1. **EnterEmailScreen** — single email field, "Send me a sign-in link" button; magic link via `supabase.auth.signInWithOtp`
-2. **CheckEmailScreen** — confirmation + resend; receives `email` param from EnterEmail
-3. **SetupProfileScreen** — display name field; updates `user_profile.display_name`; shown only when `display_name === ''`
-4. **SetupCircleScreen** — two options: Create circle (calls `create_care_circle` RPC) or Join via invite link (validates token from `circle_invites`)
-5. **InviteManagementScreen** — admin generates/copies invite link; shows current members
+Two screens, both already stubbed:
 
-For each screen: build service function first → hook if needed → screen component.
+#### `UserSettingsScreen`
 
-### Font setup (do before first screen)
+- Display name (editable)
+- Google Calendar sync toggle (UI only for now — no OAuth yet)
+- Sign out button
 
-Install Hanken Grotesk: `npx expo install @expo-google-fonts/hanken-grotesk expo-font`
-Wire up font loading in App.tsx with `useFonts` hook before rendering navigator.
+#### `CircleAdminScreen` (only visible/accessible to circle admin role)
+
+- Circle name display
+- Members list with roles
+- Invite management → navigates to existing `InviteManagementScreen`
+
+### Step 8 — Push notifications (basic)
+
+- Register push token on login → save to `user_profile.push_token`
+- Send notification when a task is assigned to you (Supabase Edge Function or client-side trigger)
+- This was shown in the wireframes (lock screen notification)
+
+### Step 9 — Daily digest modal
+
+- `DailyDigestScreen` stub already exists
+- Show on first app open of the day if there are tasks/appointments upcoming
+- Gate with `last_digest_shown_at` on `user_profile`
 
 ---
 
 ## Open items
 
-- Hanken Grotesk font not yet installed/loaded (theme.ts has the token names ready)
-- Google OAuth client ID not yet configured (needed for Calendar sync — can defer)
-- Apple Developer account deferred (EAS Build / TestFlight post-MVP)
+- Google OAuth client ID not yet configured (Calendar sync — defer until after Settings screens)
+- Apple Developer account deferred (EAS Build post-MVP)
+- Appointment editing (changing date/time/assignee after creation) not yet built — appointment detail currently shows fields read-only. Add inline editing similar to TaskDetailScreen.
 
 ---
 
@@ -71,5 +130,12 @@ Wire up font loading in App.tsx with `useFonts` hook before rendering navigator.
 
 Supabase project ID: `icmtktdbqrcgtbeiggdc`
 Supabase project URL: `https://icmtktdbqrcgtbeiggdc.supabase.co`
-CLI access token: in `.env.local` (same as family-hub)
+Resend SMTP configured and working
 GitHub: `ofereisenberg/Caregiver-app`
+
+## Testing notes (still valid)
+
+- Android Studio sometimes needs a restart to make the emulator accessible. Pixel 8 / Android 15.
+- Press `r` in Expo terminal to force full reload when hot reload misses changes.
+- OTP is 8 digits.
+- Physical device had Expo Go SDK 54 (project uses 56) — use emulator.

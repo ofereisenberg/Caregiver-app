@@ -18,7 +18,7 @@ export type AppStackParamList = {
   TaskDetail: { taskId: string };
   AddTask: { parentAppointmentId?: string };
   AppointmentDetail: { appointmentId: string };
-  AddAppointment: undefined;
+  AddAppointment: { taskId?: string };
   DailyDigest: undefined;
   UserSettings: undefined;
   CircleAdmin: undefined;

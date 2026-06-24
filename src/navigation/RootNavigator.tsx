@@ -1,14 +1,14 @@
 import { ActivityIndicator, View } from 'react-native';
 
-import { useAuthState } from '../hooks/useAuthState';
+import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../constants/theme';
 import { AppNavigator } from './AppNavigator';
 import { AuthNavigator } from './AuthNavigator';
 
 export function RootNavigator() {
-  const { session, loading } = useAuthState();
+  const { setupStage } = useAuth();
 
-  if (loading) {
+  if (setupStage === 'loading') {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.canvas, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.colors.sage} />
@@ -16,5 +16,5 @@ export function RootNavigator() {
     );
   }
 
-  return session ? <AppNavigator /> : <AuthNavigator />;
+  return setupStage === 'complete' ? <AppNavigator /> : <AuthNavigator />;
 }

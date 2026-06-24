@@ -1,16 +1,199 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { theme } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
+import { AuthStackParamList } from '../../navigation/types';
+import { getCurrentUserId, sendOtp, verifyOtp } from '../../services/auth';
+import { getUserCircle } from '../../services/circle';
+import { getProfile } from '../../services/profile';
 
-export function CheckEmailScreen() {
+type Props = NativeStackScreenProps<AuthStackParamList, 'CheckEmail'>;
+
+export function CheckEmailScreen({ route, navigation }: Props) {
+  const { email } = route.params;
+  const { recheckSetup } = useAuth();
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleVerify = async () => {
+    if (code.trim().length < 6) {
+      setError('Enter the sign-in code from your email.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    const { error: verifyError } = await verifyOtp(email, code.trim());
+    if (verifyError) {
+      setLoading(false);
+      setError('Invalid code. Please check your email and try again.');
+      return;
+    }
+
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      setLoading(false);
+      setError('Something went wrong. Please try again.');
+      return;
+    }
+
+    const { data: profile } = await getProfile(userId);
+    if (!profile || !profile.display_name) {
+      setLoading(false);
+      navigation.navigate('SetupProfile');
+      return;
+    }
+
+    const { data: circle } = await getUserCircle(userId);
+    if (!circle) {
+      setLoading(false);
+      navigation.navigate('SetupCircle');
+      return;
+    }
+
+    // Returning user — fully set up; trigger transition to app
+    await recheckSetup();
+    setLoading(false);
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setError(null);
+    await sendOtp(email);
+    setResending(false);
+    setResent(true);
+    setTimeout(() => setResent(false), 4000);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Check Email</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Check your email</Text>
+        <Text style={styles.subtitle}>
+          We sent a sign-in code to{'\n'}
+          <Text style={styles.email}>{email}</Text>
+        </Text>
+      </View>
+
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="12345678"
+          placeholderTextColor={theme.colors.textMuted}
+          value={code}
+          onChangeText={(t) => { setCode(t); setError(null); }}
+          keyboardType="number-pad"
+          maxLength={8}
+          returnKeyType="done"
+          onSubmitEditing={handleVerify}
+          autoFocus
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleVerify}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color={theme.colors.surface} />
+          ) : (
+            <Text style={styles.buttonLabel}>Verify</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.resendRow} onPress={handleResend} disabled={resending}>
+          {resending ? (
+            <ActivityIndicator size="small" color={theme.colors.sage} />
+          ) : (
+            <Text style={styles.resendText}>
+              {resent ? 'Sent! Check your inbox.' : "Didn't get it? Resend"}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.canvas, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: theme.fontSize.body, color: theme.colors.textMuted },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.canvas,
+    paddingHorizontal: theme.spacing.screen,
+    justifyContent: 'center',
+  },
+  header: {
+    marginBottom: theme.spacing.xxl,
+  },
+  title: {
+    fontFamily: theme.fontFamily.sansBold,
+    fontSize: theme.fontSize.title,
+    color: theme.colors.textPrimary,
+    letterSpacing: theme.letterSpacing.tight,
+    marginBottom: theme.spacing.md,
+  },
+  subtitle: {
+    fontFamily: theme.fontFamily.sans,
+    fontSize: theme.fontSize.body,
+    color: theme.colors.textSecondary,
+    lineHeight: 24,
+  },
+  email: {
+    fontFamily: theme.fontFamily.sansMedium,
+    color: theme.colors.textPrimary,
+  },
+  form: {
+    gap: theme.spacing.md,
+  },
+  input: {
+    backgroundColor: theme.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.input,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    fontFamily: theme.fontFamily.sansBold,
+    fontSize: theme.fontSize.subhead,
+    color: theme.colors.textPrimary,
+    letterSpacing: theme.letterSpacing.wide,
+    textAlign: 'center',
+  },
+  error: {
+    fontFamily: theme.fontFamily.sans,
+    fontSize: theme.fontSize.small,
+    color: theme.colors.overdueFg,
+  },
+  button: {
+    backgroundColor: theme.colors.sage,
+    borderRadius: theme.borderRadius.button,
+    paddingVertical: theme.spacing.lg,
+    alignItems: 'center',
+    ...theme.shadow.sage,
+  },
+  buttonDisabled: {
+    backgroundColor: theme.colors.disabledBg,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonLabel: {
+    fontFamily: theme.fontFamily.sansBold,
+    fontSize: theme.fontSize.body,
+    color: theme.colors.surface,
+  },
+  resendRow: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  resendText: {
+    fontFamily: theme.fontFamily.sans,
+    fontSize: theme.fontSize.body,
+    color: theme.colors.sage,
+  },
 });

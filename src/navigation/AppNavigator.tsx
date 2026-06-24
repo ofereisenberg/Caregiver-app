@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AddAppointmentScreen } from '../screens/app/AddAppointmentScreen';
 import { AddTaskScreen } from '../screens/app/AddTaskScreen';
@@ -35,8 +36,24 @@ function MainTabs() {
         },
       }}
     >
-      <Tab.Screen name="Tasks" component={TaskListScreen} />
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
+      <Tab.Screen
+        name="Tasks"
+        component={TaskListScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="checkmark-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
