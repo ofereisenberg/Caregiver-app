@@ -6,9 +6,14 @@
 
 ## Current Status
 
-Core app flow is complete end-to-end. Tasks and appointments can be created, viewed, edited, and deleted. The Calendar tab is live. Ready for thorough emulator testing at the start of next session before moving to Settings screens and push notifications.
+Core app flow is complete end-to-end. Tasks and appointments can be created, viewed, edited, and deleted. The Calendar tab is live.
 
-**Next up:** Test the full flow on the emulator, then build Settings screens.
+**Known bug to fix first:** Supabase Realtime subscription error on app load:
+`Error: cannot add postgres_changes callbacks after subscribe()`
+
+Root cause: `fetchTasks` / `fetchAppointments` are in the `useEffect` dependency arrays for the subscription setup in `useTaskList` and `useAppointmentList`. When the callback reference changes (React re-render or Strict Mode double-invoke), the effect re-runs but Supabase throws if `.on()` is called on an already-subscribed channel. Fix: store the fetch function in a `useRef` so the subscription closure always calls the latest version without needing to re-subscribe. Dependency array for the subscription effect should be `[circleId]` only.
+
+**Next up:** Fix the Realtime subscription bug, then work through the testing checklist, then build Settings screens.
 
 ---
 
