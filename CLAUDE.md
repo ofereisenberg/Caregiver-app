@@ -4,7 +4,18 @@
 **Project:** Caregiver Coordination App
 **Stack:** Expo (React Native) + Supabase
 **Purpose:** Standing instructions for all code generation in this project. Apply these principles to every file, every session, without exception.
-**Last updated:** 2026-06-22
+**Last updated:** 2026-06-24
+
+---
+
+## Session Start Protocol
+
+At the start of every session, read these two files before doing anything else:
+
+1. `docs/project-context.md` — what the app is, tech stack, folder layout, data model, conventions
+2. `docs/next_session.md` — current status, what was done last session, what's next
+
+At the end of every session, overwrite `docs/next_session.md` with current status, what was done, and what's next. Do not append — replace.
 
 ---
 
