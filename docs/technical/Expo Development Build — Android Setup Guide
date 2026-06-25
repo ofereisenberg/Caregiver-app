@@ -1,0 +1,133 @@
+# Expo Development Build — Android Setup Guide
+
+> **Context:** Expo Go on the Play Store runs SDK 54. If your project uses SDK 56+, you need a development build instead. This guide walks you through the full setup for testing on a physical Android device.
+
+---
+
+## Prerequisites
+
+- Android Studio installed
+- USB cable to connect your phone
+- Your phone and PC on the **same WiFi network**
+- An Expo project running SDK 56
+
+---
+
+## Step 1 — Enable Developer Mode on your Android device
+
+1. Go to **Settings → About Phone**
+2. Tap **Build Number** 7 times until you see _"You are now a developer"_
+3. Go back to **Settings → Developer Options**
+4. Enable **USB Debugging**
+
+---
+
+## Step 2 — Connect your phone
+
+1. Plug your phone into your PC via USB
+2. On your phone, tap **Allow** when prompted to trust the computer
+3. Verify Android Studio sees it: open Android Studio → **Device Manager** — your phone should appear in the list
+
+---
+
+## Step 3 — Add expo-dev-client to your project
+
+In your terminal:
+
+```bash
+npx expo install expo-dev-client
+```
+
+---
+
+## Step 4 — Remove any stale android folder
+
+If you have an existing `/android` folder from a previous build, delete it — it will be regenerated cleanly:
+
+```bash
+rm -rf android
+```
+
+---
+
+## Step 5 — Build and install directly to your phone
+
+```bash
+npx expo run:android --device
+```
+
+This will:
+- Generate the `/android` folder via prebuild
+- Compile the native APK using Android Studio's build tools
+- Install it directly onto your connected phone
+
+> ⏱ This takes a few minutes the first time.
+
+---
+
+## Step 6 — Start your dev server
+
+```bash
+npx expo start
+```
+
+Your phone will show the dev client launcher screen. Either:
+- **Scan the QR code** from the terminal with your phone's camera
+- Or tap the server URL if it appears automatically (same WiFi network)
+
+---
+
+## Step 7 — Day-to-day usage
+
+From now on your flow is simply:
+
+1. Run `npx expo start`
+2. Open the dev client app on your phone
+3. Tap your saved server → app loads instantly
+
+Fast refresh works as normal for all JS/UI changes.
+
+> 🔁 You only need to re-run `npx expo run:android` if you install a package that includes **native code** (e.g. `expo-camera`, `expo-location`). Pure JS changes never require a rebuild.
+
+---
+
+## Dev Menu (shake to open)
+
+Once the app is running, shake your device to open the developer menu:
+
+| Option | Description |
+|---|---|
+| Fast Refresh | Toggle hot reloading |
+| Reload | Reload the JS bundle |
+| React DevTools | Inspect component tree |
+| Performance Monitor | Check FPS and memory |
+
+---
+
+## Troubleshooting
+
+**Phone not detected by Android Studio**
+- Try a different USB cable (some cables are charge-only)
+- Reinstall ADB drivers on Windows
+- Run `adb devices` in terminal to verify connection
+
+**Dev server not found on phone**
+- Make sure phone and PC are on the same WiFi network
+- Try running `npx expo start --tunnel` to bypass network issues
+
+**Build fails**
+- Make sure `ANDROID_HOME` environment variable is set correctly
+- Run `npx expo-doctor` to check for common config problems
+
+---
+
+## Why not Expo Go?
+
+| | Expo Go | Development Build |
+|---|---|---|
+| SDK support | Only the latest Play Store version (SDK 54) | Your project's SDK version |
+| Native modules | Limited to what Expo Go includes | Any native package |
+| Mirrors production | No | Yes |
+| Setup required | None | One-time build |
+
+> Expo themselves recommend migrating to development builds for any app beyond the learning/prototyping stage.
