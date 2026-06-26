@@ -11,6 +11,8 @@ export type AuthStackParamList = {
 export type BottomTabParamList = {
   Tasks: undefined;
   Calendar: undefined;
+  Notes: undefined;
+  Settings: undefined;
 };
 
 export type AppStackParamList = {
@@ -18,9 +20,8 @@ export type AppStackParamList = {
   TaskDetail: { taskId: string };
   AddTask: { parentAppointmentId?: string };
   AppointmentDetail: { appointmentId: string };
-  AddAppointment: { taskId?: string };
+  AddAppointment: { taskId?: string; date?: string };
   DailyDigest: undefined;
-  UserSettings: undefined;
   CircleAdmin: undefined;
   InviteManagement: undefined;
 };

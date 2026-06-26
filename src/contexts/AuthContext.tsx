@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Session } from '@supabase/supabase-js';
 
 import { supabase } from '../services/supabase';
+import { signOut as authSignOut } from '../services/auth';
 
 export type SetupStage = 'loading' | 'unauthenticated' | 'needs_profile' | 'needs_circle' | 'complete';
 
@@ -10,12 +11,14 @@ interface AuthContextValue {
   session: Session | null;
   setupStage: SetupStage;
   recheckSetup: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   setupStage: 'loading',
   recheckSetup: async () => {},
+  signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -65,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [checkSetup]);
 
   return (
-    <AuthContext.Provider value={{ session, setupStage, recheckSetup }}>
+    <AuthContext.Provider value={{ session, setupStage, recheckSetup, signOut: authSignOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,8 +17,10 @@ import {
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'InviteManagement'>;
 
-export function InviteManagementScreen(_props: Props) {
+export function InviteManagementScreen({ navigation }: Props) {
   const { session, recheckSetup } = useAuth();
+  const insets = useSafeAreaInsets();
+  const canGoBack = navigation.canGoBack();
   const [circleId, setCircleId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [members, setMembers] = useState<CircleMemberWithName[]>([]);
@@ -56,7 +59,11 @@ export function InviteManagementScreen(_props: Props) {
   };
 
   const handleDone = async () => {
-    await recheckSetup();
+    if (canGoBack) {
+      navigation.goBack();
+    } else {
+      await recheckSetup();
+    }
   };
 
   if (loading) {
@@ -112,8 +119,12 @@ export function InviteManagementScreen(_props: Props) {
         </View>
       )}
 
-      <TouchableOpacity style={styles.doneButton} onPress={handleDone} activeOpacity={0.8}>
-        <Text style={styles.doneButtonLabel}>Start using the app</Text>
+      <TouchableOpacity
+        style={[styles.doneButton, { marginBottom: theme.spacing.xl + insets.bottom }]}
+        onPress={handleDone}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.doneButtonLabel}>{canGoBack ? 'Done' : 'Start using the app'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -224,7 +235,6 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     marginTop: 'auto',
-    marginBottom: theme.spacing.xl,
     backgroundColor: theme.colors.sage,
     borderRadius: theme.borderRadius.button,
     paddingVertical: theme.spacing.lg,

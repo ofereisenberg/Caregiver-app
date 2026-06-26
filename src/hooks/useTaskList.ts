@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '../services/supabase';
 import { completeTask, getTasksForCircle, Task } from '../services/tasks';
@@ -29,25 +29,31 @@ export function useTaskList(
     setLoading(false);
   }, [circleId]);
 
+  // Always point to the latest fetchTasks without triggering subscription re-runs
+  const fetchRef = useRef(fetchTasks);
+  fetchRef.current = fetchTasks;
+
   useEffect(() => {
     if (circleId) fetchTasks();
   }, [fetchTasks, circleId]);
 
-  // Realtime subscription — re-fetch on any change to the circle's tasks
+  // Realtime subscription — re-fetch on any change to the circle's tasks.
+  // Unique suffix per invocation avoids StrictMode double-mount collision
+  // (same channel name + already-subscribed → Supabase throws on .on()).
   useEffect(() => {
     if (!circleId) return;
 
     const channel = supabase
-      .channel(`tasks:circle:${circleId}`)
+      .channel(`tasks:${circleId}:${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `circle_id=eq.${circleId}` },
-        () => { fetchTasks(); },
+        () => { fetchRef.current(); },
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [circleId, fetchTasks]);
+  }, [circleId]); // fetchRef is stable — intentionally omitted from deps
 
   const handleComplete = useCallback(async (taskId: string) => {
     // Optimistic: remove from list immediately

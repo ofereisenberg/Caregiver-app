@@ -1,7 +1,7 @@
 # Caregiver App — Project Context
 
 > Load this at session start. Edit freely — this is a living reference, not a spec.
-> Last updated: 2026-06-24
+> Last updated: 2026-06-26
 
 ---
 
@@ -25,7 +25,7 @@ A shared coordination app for a family caring for a mother (70+) with younger-on
 | AI — transcription | OpenAI Whisper API | Via Supabase Edge Function; never called from client |
 | AI — parsing | Claude Haiku 4.5 | Via Supabase Edge Function; max_tokens: 300 |
 | Google Calendar | One-way push (app → Google) | Appointments only; per-user setting; optional |
-| Dev platform | Windows + Android emulator | No Mac; iOS tested via Expo Go on physical iPhone |
+| Dev platform | Windows + Android physical device | No Mac; primary test device is Samsung Galaxy S10e (SM_G975F, ADB serial R58M53P4QDM) |
 | iOS builds | EAS Build | Deferred post-MVP |
 
 ---
@@ -82,16 +82,41 @@ Child prep tasks linked via `parent_appointment_id` on Task (Pattern 2).
 | Feature | Status |
 |---|---|
 | Project scaffold + folder structure | Done |
-| Supabase setup + schema | Not started |
-| Auth (magic link + care circle) | Not started |
-| Task list screen | Not started |
-| Appointment screen | Not started |
-| Calendar view | Not started |
-| Push notifications | Not started |
-| Daily digest modal | Not started |
+| Supabase setup + schema | Done |
+| Auth (magic link + care circle + invite flow) | Done |
+| Task list screen | Done |
+| Task detail + editing | Done |
+| Appointment screen + detail | Done |
+| Calendar view | Done |
+| Settings screens (user + circle admin) | Done |
+| Push notifications | Not started (Step 8) |
+| Daily digest modal | Not started (Step 9) |
 | Google Calendar sync | Not started |
-| Voice input (Whisper + Haiku) | Stub only |
-| Settings screens | Not started |
+| Voice input (Whisper + Haiku) | Not started (Step 11) — expo-av removed until then |
+
+---
+
+## 6. Dev Environment
+
+**Full setup guide:** [docs/technical/05-android-dev-build-setup.md](technical/05-android-dev-build-setup.md)
+
+The app runs as an Expo development build (not Expo Go — SDK 56 is incompatible with Expo Go SDK 54).
+
+**Build command (PowerShell):**
+
+```powershell
+$env:ANDROID_SERIAL = "R58M53P4QDM"
+$env:JAVA_HOME = "C:\Users\ofere\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+$env:ANDROID_HOME = "C:\Users\ofere\AppData\Local\Android\Sdk"
+npx expo run:android
+```
+
+**Key constraints:**
+
+- Requires JDK 17 (Eclipse Temurin) AND JDK 21 (Android Studio JBR) — both must be registered in `android/gradle.properties`
+- After every `npm install`: re-comment the Foojay plugin line in `node_modules/@react-native/gradle-plugin/settings.gradle.kts` (see guide)
+- `newArchEnabled=false` in `android/gradle.properties` — New Architecture is disabled; causes runtime crashes with some Expo modules on this project
+- `expo-av` is not installed — removed due to a `LazyKType` version incompatibility crash; add it back with `npm install expo-av` when building voice input (Step 11)
 
 ---
 
@@ -103,6 +128,7 @@ Child prep tasks linked via `parent_appointment_id` on Task (Pattern 2).
 | [docs/product/02-interview-research-log.md](product/02-interview-research-log.md) | Pain points, MVP scoring, stakeholder map |
 | [docs/product/03-mvp-handoff-for-design](product/03-mvp-handoff-for-design) | Screen list, data model for wireframes, design tone |
 | [docs/technical/04-technical-decisions-and-constraints.md](technical/04-technical-decisions-and-constraints.md) | All resolved tech decisions: auth, data model, Google Calendar, notifications, voice input, offline |
+| [docs/technical/05-android-dev-build-setup.md](technical/05-android-dev-build-setup.md) | Android dev build setup for Windows — JDK setup, Foojay fix, device targeting, known errors |
 
 ---
 

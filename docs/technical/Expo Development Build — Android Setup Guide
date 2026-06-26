@@ -104,18 +104,112 @@ Once the app is running, shake your device to open the developer menu:
 
 ---
 
+## Windows-Specific Setup (Required Before First Build)
+
+The happy path above works on macOS. On Windows with Gradle 9, several one-time fixes are needed.
+
+### 1 — Install both JDK 17 and JDK 21
+
+The build needs two JDK versions simultaneously:
+
+- **JDK 17** — required by the React Native Gradle settings-plugin (compiles itself first)
+- **JDK 21** — required by expo-modules-core, react-native-screens, react-native-safe-area-context
+
+Android Studio ships with JBR (Java 21). You need to separately install **Eclipse Temurin JDK 17** from [adoptium.net](https://adoptium.net/).
+
+Set `JAVA_HOME` to JDK 17 when running the build:
+
+```powershell
+$env:JAVA_HOME = "C:\Users\<you>\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.x.x-hotspot"
+$env:ANDROID_HOME = "C:\Users\<you>\AppData\Local\Android\Sdk"
+npx expo run:android
+```
+
+### 2 — Register both JDKs in `android/gradle.properties`
+
+Add these lines so Gradle finds both JDKs without downloading from the internet:
+
+```properties
+org.gradle.java.installations.auto-download=false
+org.gradle.java.installations.paths=C:/Users/<you>/AppData/Local/Programs/Eclipse Adoptium/jdk-17.0.x.x-hotspot,C:/Program Files/Android/Android Studio/jbr
+kotlin.jvm.target.validation.mode=IGNORE
+```
+
+`IGNORE` suppresses JVM target mismatch warnings between Kotlin and Java compile tasks in third-party libraries — without it, the build fails on libraries that set these inconsistently.
+
+### 3 — Disable the Foojay plugin in the React Native Gradle plugin
+
+The RN Gradle plugin ships with a Foojay auto-download plugin (version 0.5.0) that references an API removed in Gradle 9. Comment it out:
+
+**File:** `node_modules/@react-native/gradle-plugin/settings.gradle.kts`
+
+Change:
+
+```kotlin
+plugins { id("org.gradle.toolchains.foojay-resolver-convention").version("0.8.0") }
+```
+
+To:
+
+```kotlin
+// Foojay disabled — JDK 17 and 21 provided via org.gradle.java.installations.paths
+// plugins { id("org.gradle.toolchains.foojay-resolver-convention").version("0.8.0") }
+```
+
+> ⚠️ This file is inside `node_modules` — the change will be lost after `npm install`. If you re-run install, re-apply this comment. Consider adding a `postinstall` script to automate it.
+
+### 4 — Target your device explicitly
+
+Verify your phone is connected and authorized:
+
+```powershell
+adb devices
+```
+
+Output should show `device` (not `unauthorized`). If it shows `unauthorized`, tap **Allow** on the phone screen.
+
+Then set your device serial before building so the emulator isn't selected instead:
+
+```powershell
+$env:ANDROID_SERIAL = "your-device-serial-from-adb-devices"
+```
+
+---
+
 ## Troubleshooting
 
-**Phone not detected by Android Studio**
-- Try a different USB cable (some cables are charge-only)
-- Reinstall ADB drivers on Windows
-- Run `adb devices` in terminal to verify connection
+### Phone not detected (`adb devices` shows nothing or `unauthorized`)
 
-**Dev server not found on phone**
+- Use `adb devices` in terminal — this is more reliable than Android Studio's Device Manager UI
+- If `unauthorized`: approve the "Allow USB Debugging" prompt on your phone screen
+- Try a different USB cable (many cables are charge-only, not data)
+- On Windows: reinstall ADB drivers via Android Studio → SDK Manager → SDK Tools → Google USB Driver
+
+### Build picks emulator instead of phone
+
+- Set `$env:ANDROID_SERIAL = "your-device-id"` before running `npx expo run:android`
+- Device ID comes from `adb devices`
+
+### `IBM_SEMERU` error in build output
+
+The Foojay plugin is active — apply the fix in Windows Step 3 above.
+
+### `Cannot find Java installation matching languageVersion=17`
+
+- `JAVA_HOME` points to JDK 21. Set it to JDK 17 (Temurin) as shown in Windows Step 1 above
+- Or JDK 17 isn't in `org.gradle.java.installations.paths` — add it as shown in Windows Step 2
+
+### `Cannot find Java installation matching languageVersion=21`
+
+Android Studio's JBR path isn't in `org.gradle.java.installations.paths` — add it as shown in Windows Step 2.
+
+### Dev server not found on phone
+
 - Make sure phone and PC are on the same WiFi network
-- Try running `npx expo start --tunnel` to bypass network issues
+- Try `npx expo start --tunnel` to bypass network issues
 
-**Build fails**
+### Build fails with unrelated Gradle error
+
 - Make sure `ANDROID_HOME` environment variable is set correctly
 - Run `npx expo-doctor` to check for common config problems
 

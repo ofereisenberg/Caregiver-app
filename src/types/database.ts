@@ -20,9 +20,12 @@ export type Database = {
           circle_id: string
           created_at: string
           created_by: string
-          duration_minutes: number | null
+          ends_at: string | null
           google_calendar_event_id: string | null
           id: string
+          is_full_day: boolean
+          location: string | null
+          recurrence: string | null
           starts_at: string
           title: string
           visibility: Database["public"]["Enums"]["visibility"]
@@ -32,9 +35,12 @@ export type Database = {
           circle_id: string
           created_at?: string
           created_by: string
-          duration_minutes?: number | null
+          ends_at?: string | null
           google_calendar_event_id?: string | null
           id?: string
+          is_full_day?: boolean
+          location?: string | null
+          recurrence?: string | null
           starts_at: string
           title: string
           visibility?: Database["public"]["Enums"]["visibility"]
@@ -44,9 +50,12 @@ export type Database = {
           circle_id?: string
           created_at?: string
           created_by?: string
-          duration_minutes?: number | null
+          ends_at?: string | null
           google_calendar_event_id?: string | null
           id?: string
+          is_full_day?: boolean
+          location?: string | null
+          recurrence?: string | null
           starts_at?: string
           title?: string
           visibility?: Database["public"]["Enums"]["visibility"]

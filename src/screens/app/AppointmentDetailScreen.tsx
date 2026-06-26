@@ -22,21 +22,28 @@ import { AppStackParamList } from '../../navigation/types';
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AppointmentDetail'>;
 
-function formatStartsAt(startsAt: string): string {
-  const d = new Date(startsAt);
-  return (
-    d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }) +
-    ' · ' +
-    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-  );
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-function formatDuration(minutes: number | null): string | null {
-  if (!minutes) return null;
-  if (minutes < 60) return `${minutes} min`;
-  if (minutes === 60) return '1 hr';
-  if (minutes % 60 === 0) return `${minutes / 60} hrs`;
-  return `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function formatWhen(startsAt: string, endsAt: string | null, isFullDay: boolean): string {
+  if (isFullDay) return `${formatDate(startsAt)} · All day`;
+  const timeRange = endsAt ? `${formatTime(startsAt)} – ${formatTime(endsAt)}` : formatTime(startsAt);
+  return `${formatDate(startsAt)} · ${timeRange}`;
+}
+
+function formatRecurrence(recurrence: string | null): string | null {
+  const labels: Record<string, string> = {
+    daily: 'Every day',
+    weekly: 'Every week',
+    monthly: 'Every month',
+    yearly: 'Every year',
+  };
+  return recurrence ? (labels[recurrence] ?? recurrence) : null;
 }
 
 export function AppointmentDetailScreen() {
@@ -77,7 +84,7 @@ export function AppointmentDetailScreen() {
     return <View style={styles.centered}><ActivityIndicator color={theme.colors.sage} /></View>;
   }
 
-  const duration = formatDuration(appointment.duration_minutes);
+  const recurrenceLabel = formatRecurrence(appointment.recurrence);
 
   return (
     <View style={styles.container}>
@@ -94,8 +101,7 @@ export function AppointmentDetailScreen() {
           <Text style={styles.title}>{appointment.title}</Text>
         </View>
         <Text style={styles.dateText}>
-          {formatStartsAt(appointment.starts_at)}
-          {duration ? <Text style={styles.durationText}> · {duration}</Text> : null}
+          {formatWhen(appointment.starts_at, appointment.ends_at, appointment.is_full_day)}
         </Text>
 
         <View style={styles.fieldCard}>
@@ -110,6 +116,24 @@ export function AppointmentDetailScreen() {
               <Text style={styles.fieldValue}>{assigneeName ?? 'Unassigned'}</Text>
             </View>
           </View>
+          {appointment.location ? (
+            <>
+              <View style={styles.rowDivider} />
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Location</Text>
+                <Text style={styles.fieldValue} numberOfLines={2}>{appointment.location}</Text>
+              </View>
+            </>
+          ) : null}
+          {recurrenceLabel ? (
+            <>
+              <View style={styles.rowDivider} />
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Repeat</Text>
+                <Text style={styles.fieldValue}>{recurrenceLabel}</Text>
+              </View>
+            </>
+          ) : null}
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Visibility</Text>

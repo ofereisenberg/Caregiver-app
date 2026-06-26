@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,6 +13,8 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,34 +25,29 @@ import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AddAppointment'>;
+type PickerMode = 'start-date' | 'end-date' | 'start-time' | 'end-time';
 
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '11:30', '14:00', '14:30', '15:00', '16:00'];
-const DURATION_OPTIONS: { label: string; minutes: number | null }[] = [
-  { label: 'Not set', minutes: null },
-  { label: '30 min', minutes: 30 },
-  { label: '1 hr', minutes: 60 },
-  { label: '1.5 hrs', minutes: 90 },
-  { label: '2 hrs', minutes: 120 },
+const RECURRENCE_OPTIONS: { label: string; value: string | null }[] = [
+  { label: "Don't repeat", value: null },
+  { label: 'Every day', value: 'daily' },
+  { label: 'Every week', value: 'weekly' },
+  { label: 'Every month', value: 'monthly' },
+  { label: 'Every year', value: 'yearly' },
 ];
 
-function getUpcomingDays(count: number): Date[] {
-  const days: Date[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  for (let i = 0; i < count; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    days.push(d);
-  }
-  return days;
+function getInitialStart(dateParam?: string): Date {
+  const d = dateParam ? new Date(dateParam + 'T00:00:00') : new Date();
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + 1);
+  return d;
 }
 
-function formatDayChip(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+function formatDateDisplay(d: Date): string {
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function isSameDay(a: Date, b: Date) {
-  return a.toDateString() === b.toDateString();
+function formatTimeDisplay(d: Date): string {
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export function AddAppointmentScreen() {
@@ -59,19 +57,27 @@ export function AddAppointmentScreen() {
   const { circle, members } = useCircle();
 
   const taskId = route.params?.taskId;
-  const upcomingDays = getUpcomingDays(7);
+  const dateParam = route.params?.date;
 
   const [title, setTitle] = useState('');
   const [sourceTaskTitle, setSourceTaskTitle] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [expandedRow, setExpandedRow] = useState<'duration' | 'assign' | null>(null);
-  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
+  const [isFullDay, setIsFullDay] = useState(false);
+  const [startDate, setStartDate] = useState<Date>(() => getInitialStart(dateParam));
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const s = getInitialStart(dateParam);
+    s.setHours(s.getHours() + 1);
+    return s;
+  });
+  const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
+  const [location, setLocation] = useState('');
+  const [recurrence, setRecurrence] = useState<string | null>(null);
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<'location' | 'repeat' | 'assign' | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pre-fill from source task if launched via "Make an appointment"
+  const locationInputRef = useRef<TextInput>(null);
+
   useEffect(() => {
     if (!taskId) return;
     getTask(taskId).then(({ data }) => {
@@ -83,25 +89,86 @@ export function AddAppointmentScreen() {
     });
   }, [taskId]);
 
-  function toggleRow(row: 'duration' | 'assign') {
-    setExpandedRow((prev) => (prev === row ? null : row));
+  function handlePickerChange(_event: unknown, date?: Date) {
+    setPickerMode(null); // Android auto-dismisses; this cleans up for both platforms
+    if (!date) return;
+
+    switch (pickerMode) {
+      case 'start-date': {
+        const next = new Date(startDate);
+        next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+        setStartDate(next);
+        // Push end date forward if it's now before start
+        if (endDate < next) {
+          const nextEnd = new Date(endDate);
+          nextEnd.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+          setEndDate(nextEnd);
+        }
+        break;
+      }
+      case 'end-date': {
+        const next = new Date(endDate);
+        next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+        if (next >= startDate) setEndDate(next);
+        break;
+      }
+      case 'start-time': {
+        const next = new Date(startDate);
+        next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+        setStartDate(next);
+        // Auto-push end time forward if it's now <= start
+        if (endDate <= next) {
+          const nextEnd = new Date(next);
+          nextEnd.setHours(nextEnd.getHours() + 1);
+          setEndDate(nextEnd);
+        }
+        break;
+      }
+      case 'end-time': {
+        const next = new Date(endDate);
+        next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+        if (next > startDate) setEndDate(next);
+        break;
+      }
+    }
+  }
+
+  function toggleRow(row: 'location' | 'repeat' | 'assign') {
+    const next = expandedRow === row ? null : row;
+    setExpandedRow(next);
+    if (next === 'location') {
+      setTimeout(() => locationInputRef.current?.focus(), 100);
+    }
   }
 
   const handleAdd = useCallback(async () => {
-    if (!title.trim() || !selectedDate || !selectedTime || !circle || !session?.user) return;
+    if (!title.trim() || !circle || !session?.user) return;
+    if (!isFullDay && endDate <= startDate) return;
 
     setSaving(true);
     setError(null);
 
-    const [hours, minutes] = selectedTime.split(':').map(Number);
-    const startsAt = new Date(selectedDate);
-    startsAt.setHours(hours, minutes, 0, 0);
+    let startsAt: Date;
+    let endsAt: Date;
+
+    if (isFullDay) {
+      startsAt = new Date(startDate);
+      startsAt.setHours(0, 0, 0, 0);
+      endsAt = new Date(endDate);
+      endsAt.setHours(23, 59, 59, 999);
+    } else {
+      startsAt = new Date(startDate);
+      endsAt = new Date(endDate);
+    }
 
     const { data: appt, error: createError } = await createAppointment({
       title: title.trim(),
       circle_id: circle.id,
       starts_at: startsAt.toISOString(),
-      duration_minutes: durationMinutes,
+      ends_at: endsAt.toISOString(),
+      is_full_day: isFullDay,
+      location: location.trim() || null,
+      recurrence,
       assignee: assigneeId,
       visibility: 'shared',
     });
@@ -113,16 +180,26 @@ export function AddAppointmentScreen() {
     } else if (appt) {
       navigation.replace('AppointmentDetail', { appointmentId: appt.id });
     }
-  }, [title, selectedDate, selectedTime, circle, session, durationMinutes, assigneeId, navigation]);
+  }, [title, isFullDay, startDate, endDate, location, recurrence, assigneeId, circle, session, navigation]);
 
-  const canAdd = title.trim().length > 0 && selectedDate !== null && selectedTime !== null && !saving;
+  const canAdd = title.trim().length > 0 && (isFullDay || endDate > startDate) && !saving;
+
+  const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? "Don't repeat";
+  const assigneeLabel = assigneeId
+    ? members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Unassigned'
+    : 'Unassigned';
+
+  const pickerValue = pickerMode === 'start-date' || pickerMode === 'start-time' ? startDate : endDate;
 
   return (
     <KeyboardAvoidingView style={styles.sheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.handle} />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Source task banner */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {sourceTaskTitle && (
           <View style={styles.sourceBanner}>
             <Text style={styles.sourceBannerLabel}>New appointment</Text>
@@ -132,6 +209,7 @@ export function AddAppointmentScreen() {
 
         <Text style={styles.heading}>New appointment</Text>
 
+        {/* Title */}
         <TextInput
           style={styles.titleInput}
           placeholder="Title"
@@ -144,58 +222,93 @@ export function AddAppointmentScreen() {
         />
         <View style={styles.inputDivider} />
 
-        {/* When — date chips */}
-        <Text style={styles.whenLabel}>When</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipScrollContent}>
-          {upcomingDays.map((day) => {
-            const selected = selectedDate !== null && isSameDay(day, selectedDate);
-            return (
-              <TouchableOpacity
-                key={day.toISOString()}
-                style={[styles.chip, selected && styles.chipSelected]}
-                onPress={() => setSelectedDate(day)}
-              >
-                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
-                  {formatDayChip(day)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* Date / time card — Google Calendar style */}
+        <View style={styles.dateTimeCard}>
+          {/* All day toggle */}
+          <View style={styles.allDayRow}>
+            <Ionicons name="time-outline" size={18} color={theme.colors.textMuted} />
+            <Text style={styles.allDayLabel}>All day</Text>
+            <Switch
+              value={isFullDay}
+              onValueChange={setIsFullDay}
+              trackColor={{ false: theme.colors.borderMid, true: theme.colors.sage }}
+              thumbColor={theme.colors.surface}
+            />
+          </View>
 
-        {/* Time chips */}
-        <View style={styles.chipRow}>
-          {TIME_SLOTS.map((time) => {
-            const selected = selectedTime === time;
-            return (
-              <TouchableOpacity
-                key={time}
-                style={[styles.chip, selected && styles.chipSelected]}
-                onPress={() => setSelectedTime(time)}
-              >
-                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{time}</Text>
+          <View style={styles.cardDivider} />
+
+          {/* Start → End */}
+          <View style={styles.dateTimeRow}>
+            {/* Start */}
+            <View style={styles.dateTimeCol}>
+              <TouchableOpacity onPress={() => setPickerMode('start-date')}>
+                <Text style={styles.pickerDate}>{formatDateDisplay(startDate)}</Text>
               </TouchableOpacity>
-            );
-          })}
+              {!isFullDay && (
+                <TouchableOpacity onPress={() => setPickerMode('start-time')}>
+                  <Text style={styles.pickerTime}>{formatTimeDisplay(startDate)}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <Ionicons name="arrow-forward" size={16} color={theme.colors.textMuted} style={styles.arrowIcon} />
+
+            {/* End */}
+            <View style={styles.dateTimeCol}>
+              <TouchableOpacity onPress={() => setPickerMode('end-date')}>
+                <Text style={styles.pickerDate}>{formatDateDisplay(endDate)}</Text>
+              </TouchableOpacity>
+              {!isFullDay && (
+                <TouchableOpacity onPress={() => setPickerMode('end-time')}>
+                  <Text style={styles.pickerTime}>{formatTimeDisplay(endDate)}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
+
         <View style={styles.rowDivider} />
 
-        {/* Duration */}
-        <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('duration')}>
-          <Text style={styles.expandRowLabel}><Text style={styles.expandRowPlus}>+ </Text>Duration</Text>
-          <Text style={styles.expandRowValue}>
-            {DURATION_OPTIONS.find((o) => o.minutes === durationMinutes)?.label ?? 'Not set'}
+        {/* Location */}
+        <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('location')}>
+          <Text style={styles.expandRowLabel}>
+            <Text style={styles.expandRowPlus}>+ </Text>Location
           </Text>
+          {location.length > 0 && (
+            <Text style={styles.expandRowValue} numberOfLines={1}>{location}</Text>
+          )}
         </TouchableOpacity>
-        {expandedRow === 'duration' && (
-          <View style={styles.chipRow}>
-            {DURATION_OPTIONS.map((opt) => (
+        {expandedRow === 'location' && (
+          <TextInput
+            ref={locationInputRef}
+            style={styles.locationInput}
+            placeholder="Address or place name"
+            placeholderTextColor={theme.colors.textFaint}
+            value={location}
+            onChangeText={setLocation}
+            returnKeyType="done"
+            onSubmitEditing={() => setExpandedRow(null)}
+          />
+        )}
+        <View style={styles.rowDivider} />
+
+        {/* Repeat */}
+        <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('repeat')}>
+          <Text style={styles.expandRowLabel}>
+            <Text style={styles.expandRowPlus}>+ </Text>Repeat
+          </Text>
+          <Text style={styles.expandRowValue}>{recurrenceLabel}</Text>
+        </TouchableOpacity>
+        {expandedRow === 'repeat' && (
+          <View style={styles.optionList}>
+            {RECURRENCE_OPTIONS.map((opt) => (
               <TouchableOpacity
-                key={String(opt.minutes)}
-                style={[styles.chip, durationMinutes === opt.minutes && styles.chipSelected]}
-                onPress={() => { setDurationMinutes(opt.minutes); setExpandedRow(null); }}
+                key={String(opt.value)}
+                style={[styles.optionRow, recurrence === opt.value && styles.optionRowSelected]}
+                onPress={() => { setRecurrence(opt.value); setExpandedRow(null); }}
               >
-                <Text style={[styles.chipLabel, durationMinutes === opt.minutes && styles.chipLabelSelected]}>
+                <Text style={[styles.optionLabel, recurrence === opt.value && styles.optionLabelSelected]}>
                   {opt.label}
                 </Text>
               </TouchableOpacity>
@@ -206,10 +319,10 @@ export function AddAppointmentScreen() {
 
         {/* With (assignee) */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('assign')}>
-          <Text style={styles.expandRowLabel}><Text style={styles.expandRowPlus}>+ </Text>With</Text>
-          <Text style={styles.expandRowValue}>
-            {assigneeId ? members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Unassigned' : 'Unassigned'}
+          <Text style={styles.expandRowLabel}>
+            <Text style={styles.expandRowPlus}>+ </Text>With
           </Text>
+          <Text style={styles.expandRowValue}>{assigneeLabel}</Text>
         </TouchableOpacity>
         {expandedRow === 'assign' && (
           <View style={styles.chipRow}>
@@ -241,36 +354,244 @@ export function AddAppointmentScreen() {
           }
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Native date/time picker — renders as dialog on Android */}
+      {pickerMode !== null && (
+        <DateTimePicker
+          value={pickerValue}
+          mode={pickerMode.includes('date') ? 'date' : 'time'}
+          display={pickerMode.includes('time') ? 'spinner' : 'default'}
+          minuteInterval={5}
+          minimumDate={pickerMode === 'end-date' ? startDate : undefined}
+          onChange={handlePickerChange}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.borderRadius.modal, borderTopRightRadius: theme.borderRadius.modal },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: theme.colors.borderMid, alignSelf: 'center', marginTop: theme.spacing.md, marginBottom: theme.spacing.sm },
+  sheet: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.borderRadius.modal,
+    borderTopRightRadius: theme.borderRadius.modal,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.borderMid,
+    alignSelf: 'center',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: theme.spacing.screen, paddingBottom: 48 },
-  sourceBanner: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, backgroundColor: theme.colors.sageTint, borderRadius: theme.borderRadius.chip, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, marginTop: theme.spacing.md, alignSelf: 'flex-start' },
-  sourceBannerLabel: { fontSize: theme.fontSize.small, fontFamily: theme.fontFamily.sansSemiBold, fontWeight: theme.fontWeight.semibold, color: theme.colors.sageDark },
-  sourceBannerTask: { fontSize: theme.fontSize.small, fontFamily: theme.fontFamily.sans, color: theme.colors.textSecondary, flexShrink: 1 },
-  heading: { fontSize: theme.fontSize.subhead, fontFamily: theme.fontFamily.sansBold, fontWeight: theme.fontWeight.bold, color: theme.colors.textPrimary, marginTop: theme.spacing.lg, marginBottom: theme.spacing.xl },
-  titleInput: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.textPrimary, paddingVertical: theme.spacing.sm },
-  inputDivider: { height: 1, backgroundColor: theme.colors.border, marginBottom: theme.spacing.lg },
-  whenLabel: { fontSize: theme.fontSize.label, fontFamily: theme.fontFamily.sansSemiBold, fontWeight: theme.fontWeight.semibold, color: theme.colors.textSecondary, marginBottom: theme.spacing.md },
-  chipScroll: { marginBottom: theme.spacing.sm },
-  chipScrollContent: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xs },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
-  chip: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.borderRadius.chip, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, backgroundColor: theme.colors.surface },
-  chipSelected: { backgroundColor: theme.colors.sageTint, borderColor: theme.colors.sageLight },
-  chipLabel: { fontSize: theme.fontSize.label, fontFamily: theme.fontFamily.sansMedium, fontWeight: theme.fontWeight.medium, color: theme.colors.textSecondary },
-  chipLabelSelected: { color: theme.colors.sageDark },
-  rowDivider: { height: 1, backgroundColor: theme.colors.divider, marginBottom: theme.spacing.sm },
-  expandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: theme.spacing.md },
-  expandRowLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansSemiBold, fontWeight: theme.fontWeight.semibold, color: theme.colors.textPrimary },
+  sourceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.sageTint,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    alignSelf: 'flex-start',
+  },
+  sourceBannerLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
+  },
+  sourceBannerTask: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textSecondary,
+    flexShrink: 1,
+  },
+  heading: {
+    fontSize: theme.fontSize.subhead,
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  titleInput: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+    paddingVertical: theme.spacing.sm,
+  },
+  inputDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginBottom: theme.spacing.lg,
+  },
+  // Date/time card
+  dateTimeCard: {
+    backgroundColor: theme.colors.canvas,
+    borderRadius: theme.borderRadius.card,
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    marginBottom: theme.spacing.lg,
+    overflow: 'hidden',
+  },
+  allDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  allDayLabel: {
+    flex: 1,
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: theme.colors.divider,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  dateTimeCol: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  pickerDate: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.sage,
+  },
+  pickerTime: {
+    fontSize: theme.fontSize.subhead,
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.textPrimary,
+  },
+  arrowIcon: {
+    flexShrink: 0,
+  },
+  // Expandable rows
+  rowDivider: {
+    height: 1,
+    backgroundColor: theme.colors.divider,
+    marginBottom: theme.spacing.sm,
+  },
+  expandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md,
+  },
+  expandRowLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+  },
   expandRowPlus: { color: theme.colors.sage },
-  expandRowValue: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.textMuted },
-  errorText: { fontSize: theme.fontSize.small, fontFamily: theme.fontFamily.sans, color: theme.colors.overdueFg, marginBottom: theme.spacing.md },
-  addButton: { backgroundColor: theme.colors.sage, borderRadius: theme.borderRadius.button, paddingVertical: 14, alignItems: 'center', marginTop: theme.spacing.lg, ...theme.shadow.sage },
-  addButtonDisabled: { backgroundColor: theme.colors.disabledBg, shadowOpacity: 0, elevation: 0 },
-  addButtonLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansBold, fontWeight: theme.fontWeight.bold, color: theme.colors.surface },
+  expandRowValue: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+    flexShrink: 1,
+    marginLeft: theme.spacing.md,
+  },
+  locationInput: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  optionList: {
+    borderRadius: theme.borderRadius.card,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  optionRow: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  optionRowSelected: { backgroundColor: theme.colors.sageTint },
+  optionLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+  },
+  optionLabelSelected: {
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  chipSelected: {
+    backgroundColor: theme.colors.sageTint,
+    borderColor: theme.colors.sageLight,
+  },
+  chipLabel: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  chipLabelSelected: { color: theme.colors.sageDark },
+  errorText: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.overdueFg,
+    marginBottom: theme.spacing.md,
+  },
+  addButton: {
+    backgroundColor: theme.colors.sage,
+    borderRadius: theme.borderRadius.button,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
+    ...theme.shadow.sage,
+  },
+  addButtonDisabled: {
+    backgroundColor: theme.colors.disabledBg,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  addButtonLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.surface,
+  },
 });

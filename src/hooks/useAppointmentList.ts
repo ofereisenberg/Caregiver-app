@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '../services/supabase';
 import { Appointment, getAppointmentsForCircle } from '../services/appointments';
@@ -23,24 +23,29 @@ export function useAppointmentList(circleId: string | null): UseAppointmentListR
     setLoading(false);
   }, [circleId]);
 
+  // Always point to the latest fetchAppointments without triggering subscription re-runs
+  const fetchRef = useRef(fetchAppointments);
+  fetchRef.current = fetchAppointments;
+
   useEffect(() => {
     if (circleId) fetchAppointments();
   }, [fetchAppointments, circleId]);
 
+  // Unique suffix per invocation avoids StrictMode double-mount collision.
   useEffect(() => {
     if (!circleId) return;
 
     const channel = supabase
-      .channel(`appointments:circle:${circleId}`)
+      .channel(`appointments:${circleId}:${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments', filter: `circle_id=eq.${circleId}` },
-        () => { fetchAppointments(); },
+        () => { fetchRef.current(); },
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [circleId, fetchAppointments]);
+  }, [circleId]); // fetchRef is stable — intentionally omitted from deps
 
   return { appointments, loading, error, refresh: fetchAppointments };
 }

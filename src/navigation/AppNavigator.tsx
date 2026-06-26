@@ -1,11 +1,13 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddAppointmentScreen } from '../screens/app/AddAppointmentScreen';
 import { AddTaskScreen } from '../screens/app/AddTaskScreen';
 import { AppointmentDetailScreen } from '../screens/app/AppointmentDetailScreen';
 import { CalendarScreen } from '../screens/app/CalendarScreen';
+import { NotesScreen } from '../screens/app/NotesScreen';
 import { DailyDigestScreen } from '../screens/app/DailyDigestScreen';
 import { TaskDetailScreen } from '../screens/app/TaskDetailScreen';
 import { TaskListScreen } from '../screens/app/TaskListScreen';
@@ -19,6 +21,7 @@ const Tab = createBottomTabNavigator<BottomTabParamList>();
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -26,7 +29,8 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.divider,
-          height: 70,
+          height: 70 + insets.bottom,
+          paddingBottom: insets.bottom,
         },
         tabBarActiveTintColor: theme.colors.sageDark,
         tabBarInactiveTintColor: theme.colors.textMuted,
@@ -54,6 +58,24 @@ function MainTabs() {
           ),
         }}
       />
+      <Tab.Screen
+        name="Notes"
+        component={NotesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="document-text-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={UserSettingsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -72,7 +94,6 @@ export function AppNavigator() {
       {/* Push screens */}
       <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} />
-      <Stack.Screen name="UserSettings" component={UserSettingsScreen} />
       <Stack.Screen name="CircleAdmin" component={CircleAdminScreen} />
       <Stack.Screen name="InviteManagement" component={InviteManagementScreen} />
 

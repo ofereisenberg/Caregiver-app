@@ -57,6 +57,10 @@ export function TaskDetailScreen() {
   const [savingNote, setSavingNote] = useState(false);
   const [expandedRow, setExpandedRow] = useState<ExpandedRow>(null);
   const initialised = useRef(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
+  const titleInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (task && !initialised.current) {
@@ -68,6 +72,28 @@ export function TaskDetailScreen() {
       setNoteText(task.progress_note ?? '');
     }
   }, [task]);
+
+  function startEditTitle() {
+    setTitleInput(task?.title ?? '');
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 50);
+  }
+
+  async function handleSaveTitle() {
+    const trimmed = titleInput.trim();
+    if (!trimmed || trimmed === task?.title) { setEditingTitle(false); return; }
+    setSavingTitle(true);
+    await updateTask(taskId, { title: trimmed });
+    setSavingTitle(false);
+    setEditingTitle(false);
+  }
+
+  function handleCancelTitle() { setEditingTitle(false); }
+
+  async function handleClearDate() {
+    setDueDate(null);
+    await updateTask(taskId, { due_date: null });
+  }
 
   function toggleRow(row: ExpandedRow) {
     setExpandedRow((prev) => (prev === row ? null : row));
@@ -96,7 +122,7 @@ export function TaskDetailScreen() {
       DateTimePickerAndroid.open({
         value: dueDate ?? new Date(),
         mode: 'date',
-        onValueChange: async (_event, selected) => {
+        onChange: async (_event, selected) => {
           if (selected) {
             setDueDate(selected);
             await updateTask(taskId, { due_date: selected.toISOString().split('T')[0] });
@@ -173,7 +199,36 @@ export function TaskDetailScreen() {
           <TouchableOpacity style={styles.checkbox} onPress={handleComplete}>
             <View style={styles.checkboxInner} />
           </TouchableOpacity>
-          <Text style={styles.title}>{task.title}</Text>
+          {editingTitle ? (
+            <View style={styles.titleEditRow}>
+              <TextInput
+                ref={titleInputRef}
+                style={styles.titleEditInput}
+                value={titleInput}
+                onChangeText={setTitleInput}
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                onSubmitEditing={handleSaveTitle}
+                multiline
+              />
+              {savingTitle ? (
+                <ActivityIndicator size="small" color={theme.colors.sage} />
+              ) : (
+                <>
+                  <TouchableOpacity onPress={handleSaveTitle} hitSlop={8}>
+                    <Ionicons name="checkmark" size={22} color={theme.colors.sage} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleCancelTitle} hitSlop={8}>
+                    <Ionicons name="close" size={22} color={theme.colors.textMuted} />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity onPress={startEditTitle} style={styles.titleTouchable}>
+              <Text style={styles.title}>{task.title}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Date badge */}
@@ -263,6 +318,11 @@ export function TaskDetailScreen() {
               display="inline"
               onChange={handleIosDateChange}
             />
+          )}
+          {dueDate !== null && (
+            <TouchableOpacity style={styles.clearDateRow} onPress={handleClearDate}>
+              <Text style={styles.clearDateLabel}>Remove date</Text>
+            </TouchableOpacity>
           )}
           <View style={styles.rowDivider} />
 
@@ -429,4 +489,31 @@ const styles = StyleSheet.create({
   appointmentLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansSemiBold, fontWeight: theme.fontWeight.semibold, color: theme.colors.sageDark },
   deleteButton: { alignItems: 'center', paddingVertical: theme.spacing.md },
   deleteLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.overdueFg },
+  titleTouchable: { flex: 1 },
+  titleEditRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  titleEditInput: {
+    flex: 1,
+    fontSize: theme.fontSize.subhead,
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.textPrimary,
+    lineHeight: 26,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.sage,
+    paddingVertical: 2,
+  },
+  clearDateRow: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  clearDateLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.overdueFg,
+  },
 });
