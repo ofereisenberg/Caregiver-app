@@ -1,11 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../constants/theme';
+import { Appointment } from '../services/appointments';
 import { Task } from '../services/tasks';
+import { OverviewItem } from '../utils/overviewGrouping';
 import { formatDueLabel, isTaskOverdue } from '../utils/taskGrouping';
 
-// Deterministic avatar color from a small palette — cycles by index in circle
 const AVATAR_COLORS = [
   theme.colors.sageTint,
   theme.colors.overdueBg,
@@ -13,26 +15,64 @@ const AVATAR_COLORS = [
   theme.colors.surfaceNote,
 ];
 
-interface TaskItemProps {
-  task: Task;
-  assigneeName: string | null;
-  assigneeIndex: number; // position in circle member list, for avatar color
+interface Props {
+  item: OverviewItem;
+  memberMap: Map<string, { displayName: string; index: number }>;
   onPress: () => void;
-  onComplete: () => void;
+  onComplete?: () => void;
 }
 
-export function TaskItem({ task, assigneeName, assigneeIndex, onPress, onComplete }: TaskItemProps) {
+function formatApptMeta(appt: Appointment): string {
+  const startDate = new Date(appt.starts_at);
+  const dateStr = startDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  if (appt.is_full_day) return `${dateStr} · All day`;
+  const startTime = startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (!appt.ends_at) return `${dateStr} · ${startTime}`;
+  const endTime = new Date(appt.ends_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${dateStr} · ${startTime} – ${endTime}`;
+}
+
+function formatTaskTimeMeta(task: Task): string | null {
+  if (!task.start_time) return null;
+  const [sh, sm] = task.start_time.split(':').map(Number);
+  const start = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+  if (!task.end_time) return start;
+  const [eh, em] = task.end_time.split(':').map(Number);
+  return `${start} – ${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
+export function OverviewItemRow({ item, memberMap, onPress, onComplete }: Props) {
+  if (item.kind === 'appointment') {
+    const appt = item.data;
+    return (
+      <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.apptIcon}>
+          <Ionicons name="calendar-outline" size={15} color={theme.colors.sage} />
+        </View>
+        <View style={styles.content}>
+          <Text style={styles.title} numberOfLines={2}>{appt.title}</Text>
+          <Text style={styles.apptMeta}>{formatApptMeta(appt)}</Text>
+          {!!appt.location && (
+            <Text style={styles.apptLocation} numberOfLines={1}>{appt.location}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  const task = item.data;
   const overdue = isTaskOverdue(task.due_date);
   const dueLabel = formatDueLabel(task.due_date);
-  const avatarColor = AVATAR_COLORS[assigneeIndex % AVATAR_COLORS.length];
-  const avatarInitial = assigneeName ? assigneeName.charAt(0).toUpperCase() : '?';
-  const avatarFg = assigneeIndex === 0 ? theme.colors.sageDark
-    : assigneeIndex === 1 ? theme.colors.overdueFg
+  const timeMeta = formatTaskTimeMeta(task);
+  const member = task.assignee ? memberMap.get(task.assignee) : null;
+  const idx = member?.index ?? 0;
+  const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+  const avatarFg = idx === 0 ? theme.colors.sageDark
+    : idx === 1 ? theme.colors.overdueFg
     : theme.colors.textSecondary;
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      {/* Checkbox */}
       <TouchableOpacity
         style={[styles.checkbox, task.completed && styles.checkboxDone]}
         onPress={task.completed ? undefined : onComplete}
@@ -44,10 +84,11 @@ export function TaskItem({ task, assigneeName, assigneeIndex, onPress, onComplet
           : <View style={styles.checkboxInner} />}
       </TouchableOpacity>
 
-      {/* Content */}
       <View style={styles.content}>
-        <Text style={[styles.title, task.completed && styles.titleDone]} numberOfLines={2}>{task.title}</Text>
-        <View style={styles.meta}>
+        <Text style={[styles.title, task.completed && styles.titleDone]} numberOfLines={2}>
+          {task.title}
+        </Text>
+        <View style={styles.taskMeta}>
           {overdue && (
             <View style={styles.overdueBadge}>
               <Text style={styles.overdueBadgeText}>Overdue</Text>
@@ -56,7 +97,10 @@ export function TaskItem({ task, assigneeName, assigneeIndex, onPress, onComplet
           {dueLabel !== '' && (
             <Text style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{dueLabel}</Text>
           )}
-          {task.recurrence && (
+          {timeMeta !== null && (
+            <Text style={styles.timeMeta}>{timeMeta}</Text>
+          )}
+          {!!task.recurrence && (
             <View style={styles.repeatsBadge}>
               <Text style={styles.repeatsBadgeText}>Repeats</Text>
             </View>
@@ -64,10 +108,11 @@ export function TaskItem({ task, assigneeName, assigneeIndex, onPress, onComplet
         </View>
       </View>
 
-      {/* Assignee avatar */}
       {task.assignee ? (
         <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-          <Text style={[styles.avatarText, { color: avatarFg }]}>{avatarInitial}</Text>
+          <Text style={[styles.avatarText, { color: avatarFg }]}>
+            {member?.displayName.charAt(0).toUpperCase() ?? '?'}
+          </Text>
         </View>
       ) : (
         <View style={[styles.avatar, styles.avatarUnassigned]}>
@@ -88,6 +133,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider,
   },
+  // Appointment left icon
+  apptIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.sageTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+    flexShrink: 0,
+  },
+  // Task checkbox
   checkbox: {
     width: 24,
     height: 24,
@@ -99,14 +156,14 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
     flexShrink: 0,
   },
+  checkboxDone: {
+    borderColor: theme.colors.sage,
+    backgroundColor: theme.colors.sage,
+  },
   checkboxInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-  },
-  checkboxDone: {
-    borderColor: theme.colors.sage,
-    backgroundColor: theme.colors.sage,
   },
   checkmark: {
     fontSize: 13,
@@ -114,10 +171,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.sansBold,
     fontWeight: theme.fontWeight.bold,
   },
-  titleDone: {
-    textDecorationLine: 'line-through',
-    color: theme.colors.textMuted,
-  },
+  // Shared content
   content: {
     flex: 1,
     gap: theme.spacing.xs,
@@ -129,7 +183,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     lineHeight: 21,
   },
-  meta: {
+  titleDone: {
+    textDecorationLine: 'line-through',
+    color: theme.colors.textMuted,
+  },
+  // Task meta row
+  taskMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
@@ -157,6 +216,11 @@ const styles = StyleSheet.create({
   dueLabelOverdue: {
     color: theme.colors.overdueFg,
   },
+  timeMeta: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+  },
   repeatsBadge: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -170,6 +234,18 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.textMuted,
   },
+  // Appointment meta
+  apptMeta: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+  },
+  apptLocation: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textFaint,
+  },
+  // Task avatar
   avatar: {
     width: 32,
     height: 32,

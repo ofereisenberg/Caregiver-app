@@ -20,7 +20,7 @@ export type AppStackParamList = {
   TaskDetail: { taskId: string };
   AddTask: { parentAppointmentId?: string };
   AppointmentDetail: { appointmentId: string };
-  AddAppointment: { taskId?: string; date?: string };
+  AddAppointment: { taskId?: string; date?: string; appointmentId?: string };
   DailyDigest: undefined;
   CircleAdmin: undefined;
   InviteManagement: undefined;

@@ -56,9 +56,9 @@ export function AppointmentDetailScreen() {
 
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
-  const assigneeName = appointment?.assignee
-    ? members.find((m) => m.user_id === appointment.assignee)?.displayName ?? null
-    : null;
+  const inviteeNames = (appointment?.invitee_ids ?? [])
+    .map((id) => members.find((m) => m.user_id === id)?.displayName ?? null)
+    .filter((n): n is string => n !== null);
 
   const completedCount = prepTasks.filter((t) => t.completed).length;
 
@@ -88,10 +88,18 @@ export function AppointmentDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
-        <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <Text style={styles.backLabel}>Back</Text>
-      </TouchableOpacity>
+      <View style={styles.navRow}>
+        <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
+          <Text style={styles.backLabel}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('AddAppointment', { appointmentId })}
+        >
+          <Ionicons name="pencil-outline" size={18} color={theme.colors.sage} />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.titleArea}>
@@ -108,12 +116,14 @@ export function AppointmentDetailScreen() {
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>With</Text>
             <View style={styles.fieldValueRow}>
-              {assigneeName && (
-                <View style={styles.assigneeAvatar}>
-                  <Text style={styles.assigneeAvatarText}>{assigneeName.charAt(0).toUpperCase()}</Text>
+              {inviteeNames.map((name) => (
+                <View key={name} style={styles.assigneeAvatar}>
+                  <Text style={styles.assigneeAvatarText}>{name.charAt(0).toUpperCase()}</Text>
                 </View>
-              )}
-              <Text style={styles.fieldValue}>{assigneeName ?? 'Unassigned'}</Text>
+              ))}
+              <Text style={styles.fieldValue}>
+                {inviteeNames.length > 0 ? inviteeNames.join(', ') : 'Nobody'}
+              </Text>
             </View>
           </View>
           {appointment.location ? (
@@ -184,7 +194,9 @@ export function AppointmentDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.canvas },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  backRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.screen, paddingTop: 56, paddingBottom: theme.spacing.sm, gap: 2 },
+  navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 56, paddingBottom: theme.spacing.sm },
+  backRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.screen, gap: 2 },
+  editButton: { paddingHorizontal: theme.spacing.screen, paddingVertical: theme.spacing.sm },
   backLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.sage },
   scroll: { paddingHorizontal: theme.spacing.screen, paddingBottom: 60 },
   titleArea: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },

@@ -14,6 +14,7 @@ import {
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,8 +34,25 @@ const REPEAT_OPTIONS: { label: string; value: RepeatValue }[] = [
   { label: 'Monthly', value: 'monthly' },
 ];
 
+type TimePickerMode = 'start' | 'end';
+
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function formatTimeDisplay(d: Date): string {
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function makeTodayAt(hour: number): Date {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+function timeToString(t: Date | null): string | null {
+  if (!t) return null;
+  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:00`;
 }
 
 export function AddTaskScreen() {
@@ -48,6 +66,9 @@ export function AddTaskScreen() {
   const [repeat, setRepeat] = useState<RepeatValue>(null);
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [endTime, setEndTime] = useState<Date | null>(null);
+  const [timePickerMode, setTimePickerMode] = useState<TimePickerMode | null>(null);
   const [onlyMe, setOnlyMe] = useState(false);
   const [expandedRow, setExpandedRow] = useState<ExpandedRow>(null);
   const [saving, setSaving] = useState(false);
@@ -63,13 +84,39 @@ export function AddTaskScreen() {
         value: dueDate ?? new Date(),
         mode: 'date',
         minimumDate: new Date(),
-        onValueChange: (_event, selected) => {
+        onChange: (_event, selected) => {
           if (selected) setDueDate(selected);
         },
       });
     } else {
       toggleRow('when');
     }
+  }
+
+  function handleTimePress(mode: TimePickerMode) {
+    const base = mode === 'start' ? (startTime ?? makeTodayAt(9)) : (endTime ?? makeTodayAt(10));
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: base,
+        mode: 'time',
+        is24Hour: true,
+        onChange: (_event, selected) => {
+          if (!selected) return;
+          if (mode === 'start') setStartTime(selected);
+          else setEndTime(selected);
+        },
+      });
+    } else {
+      setTimePickerMode(mode);
+    }
+  }
+
+  function handleIosTimeChange(_event: unknown, selected?: Date) {
+    const mode = timePickerMode;
+    setTimePickerMode(null);
+    if (!selected || !mode) return;
+    if (mode === 'start') setStartTime(selected);
+    else setEndTime(selected);
   }
 
   const handleAdd = useCallback(async () => {
@@ -84,6 +131,8 @@ export function AddTaskScreen() {
       recurrence: repeat,
       assignee: assigneeId,
       due_date: dueDate ? dueDate.toISOString().split('T')[0] : null,
+      start_time: timeToString(startTime),
+      end_time: timeToString(endTime),
       visibility: onlyMe ? 'private' : 'shared',
       parent_appointment_id: route.params?.parentAppointmentId ?? null,
     });
@@ -209,10 +258,35 @@ export function AddTaskScreen() {
             mode="date"
             display="inline"
             minimumDate={new Date()}
-            onValueChange={(_event, selected) => {
+            onChange={(_event, selected) => {
               if (selected) setDueDate(selected);
             }}
             style={styles.inlinePicker}
+          />
+        )}
+        {dueDate !== null && (
+          <View style={styles.timeRangeRow}>
+            <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('start')}>
+              <Text style={styles.timePillText}>{startTime ? formatTimeDisplay(startTime) : '–:––'}</Text>
+            </TouchableOpacity>
+            <Ionicons name="arrow-forward" size={14} color={theme.colors.textMuted} />
+            <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('end')}>
+              <Text style={styles.timePillText}>{endTime ? formatTimeDisplay(endTime) : '–:––'}</Text>
+            </TouchableOpacity>
+            {(startTime !== null || endTime !== null) && (
+              <TouchableOpacity onPress={() => { setStartTime(null); setEndTime(null); }} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        {Platform.OS === 'ios' && timePickerMode !== null && (
+          <DateTimePicker
+            value={timePickerMode === 'start' ? (startTime ?? makeTodayAt(9)) : (endTime ?? makeTodayAt(10))}
+            mode="time"
+            display="spinner"
+            minuteInterval={5}
+            onChange={handleIosTimeChange}
           />
         )}
         <View style={styles.rowDivider} />
@@ -390,5 +464,25 @@ const styles = StyleSheet.create({
   },
   inlinePicker: {
     marginBottom: theme.spacing.md,
+  },
+  timeRangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
+  },
+  timePill: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.canvas,
+  },
+  timePillText: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
   },
 });

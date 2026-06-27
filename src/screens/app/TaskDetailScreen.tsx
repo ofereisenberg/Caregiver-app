@@ -27,6 +27,30 @@ type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'TaskDetail'>;
 
 type ExpandedRow = 'assignee' | 'repeat' | 'when' | null;
+type TimePickerMode = 'start' | 'end';
+
+function formatTimeDisplay(d: Date): string {
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function makeTodayAt(hour: number): Date {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+function parseTimeString(t: string | null): Date | null {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function timeToString(t: Date | null): string | null {
+  if (!t) return null;
+  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:00`;
+}
 
 const REPEAT_OPTIONS: { label: string; value: string | null }[] = [
   { label: 'One-off', value: null },
@@ -44,7 +68,7 @@ export function TaskDetailScreen() {
   const route = useRoute<Route>();
   const { taskId } = route.params;
 
-  const { task, loading } = useTask(taskId);
+  const { task, loading, refresh } = useTask(taskId);
   const { members } = useCircle();
 
   // Local editable state — initialised from task on first load
@@ -52,6 +76,9 @@ export function TaskDetailScreen() {
   const [repeat, setRepeat] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [endTime, setEndTime] = useState<Date | null>(null);
+  const [timePickerMode, setTimePickerMode] = useState<TimePickerMode | null>(null);
   const [noteText, setNoteText] = useState('');
   const [noteChanged, setNoteChanged] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
@@ -68,6 +95,8 @@ export function TaskDetailScreen() {
       setAssigneeId(task.assignee);
       setRepeat(task.recurrence);
       setDueDate(task.due_date ? new Date(task.due_date) : null);
+      setStartTime(parseTimeString(task.start_time));
+      setEndTime(parseTimeString(task.end_time));
       setVisibility(task.visibility);
       setNoteText(task.progress_note ?? '');
     }
@@ -84,6 +113,7 @@ export function TaskDetailScreen() {
     if (!trimmed || trimmed === task?.title) { setEditingTitle(false); return; }
     setSavingTitle(true);
     await updateTask(taskId, { title: trimmed });
+    await refresh();
     setSavingTitle(false);
     setEditingTitle(false);
   }
@@ -139,6 +169,48 @@ export function TaskDetailScreen() {
       setDueDate(selected);
       await updateTask(taskId, { due_date: selected.toISOString().split('T')[0] });
     }
+  }
+
+  function handleTimePress(mode: TimePickerMode) {
+    const base = mode === 'start' ? (startTime ?? makeTodayAt(9)) : (endTime ?? makeTodayAt(10));
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: base,
+        mode: 'time',
+        is24Hour: true,
+        onChange: async (_event, selected) => {
+          if (!selected) return;
+          if (mode === 'start') {
+            setStartTime(selected);
+            await updateTask(taskId, { start_time: timeToString(selected) });
+          } else {
+            setEndTime(selected);
+            await updateTask(taskId, { end_time: timeToString(selected) });
+          }
+        },
+      });
+    } else {
+      setTimePickerMode(mode);
+    }
+  }
+
+  async function handleIosTimeChange(_event: unknown, selected?: Date) {
+    const mode = timePickerMode;
+    setTimePickerMode(null);
+    if (!selected || !mode) return;
+    if (mode === 'start') {
+      setStartTime(selected);
+      await updateTask(taskId, { start_time: timeToString(selected) });
+    } else {
+      setEndTime(selected);
+      await updateTask(taskId, { end_time: timeToString(selected) });
+    }
+  }
+
+  async function handleClearTime() {
+    setStartTime(null);
+    setEndTime(null);
+    await updateTask(taskId, { start_time: null, end_time: null });
   }
 
   async function handleSaveNote() {
@@ -317,6 +389,31 @@ export function TaskDetailScreen() {
               mode="date"
               display="inline"
               onChange={handleIosDateChange}
+            />
+          )}
+          {dueDate !== null && (
+            <View style={styles.timeRangeRow}>
+              <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('start')}>
+                <Text style={styles.timePillText}>{startTime ? formatTimeDisplay(startTime) : '–:––'}</Text>
+              </TouchableOpacity>
+              <Ionicons name="arrow-forward" size={14} color={theme.colors.textMuted} />
+              <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('end')}>
+                <Text style={styles.timePillText}>{endTime ? formatTimeDisplay(endTime) : '–:––'}</Text>
+              </TouchableOpacity>
+              {(startTime !== null || endTime !== null) && (
+                <TouchableOpacity onPress={handleClearTime} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          {Platform.OS === 'ios' && timePickerMode !== null && (
+            <DateTimePicker
+              value={timePickerMode === 'start' ? (startTime ?? makeTodayAt(9)) : (endTime ?? makeTodayAt(10))}
+              mode="time"
+              display="spinner"
+              minuteInterval={5}
+              onChange={handleIosTimeChange}
             />
           )}
           {dueDate !== null && (
@@ -515,5 +612,26 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.small,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.overdueFg,
+  },
+  timeRangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  timePill: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.canvas,
+  },
+  timePillText: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
   },
 });

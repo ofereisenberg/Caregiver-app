@@ -9,19 +9,18 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
-import { useTaskList } from '../../hooks/useTaskList';
-import { TaskItem } from '../../components/TaskItem';
-import { Task } from '../../services/tasks';
-import { TaskSection } from '../../utils/taskGrouping';
+import { useOverview } from '../../hooks/useOverview';
+import { OverviewItemRow } from '../../components/OverviewItemRow';
+import { OverviewItem, OverviewSection } from '../../utils/overviewGrouping';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
-
-type Filter = 'all' | 'mine';
+type Filter = 'all' | 'mine' | 'done';
 
 export function TaskListScreen() {
   const navigation = useNavigation<Nav>();
@@ -29,35 +28,33 @@ export function TaskListScreen() {
   const currentUserId = session?.user.id ?? '';
 
   const { circle, members, loading: circleLoading } = useCircle();
-
   const [filter, setFilter] = useState<Filter>('all');
+  const [fabOpen, setFabOpen] = useState(false);
 
-  const { sections, loading: tasksLoading, handleComplete, refresh } = useTaskList(
+  const { sections, loading: dataLoading, handleComplete, refresh } = useOverview(
     circle?.id ?? null,
     filter,
-    currentUserId,
   );
 
   useFocusEffect(
     useCallback(() => {
       refresh();
+      setFabOpen(false);
     }, [refresh]),
   );
 
-  // userId → { displayName, index } for avatar rendering
   const memberMap = useMemo(() => {
     const map = new Map<string, { displayName: string; index: number }>();
     members.forEach((m, i) => map.set(m.user_id, { displayName: m.displayName, index: i }));
     return map;
   }, [members]);
 
-  // Current user's avatar initial for the header
   const currentMember = memberMap.get(currentUserId);
   const headerInitial = currentMember?.displayName.charAt(0).toUpperCase() ?? '?';
 
-  const isLoading = circleLoading || (tasksLoading && sections.length === 0);
+  const isLoading = circleLoading || (dataLoading && sections.length === 0);
 
-  function renderSectionHeader({ section }: { section: TaskSection }) {
+  function renderSectionHeader({ section }: { section: OverviewSection }) {
     const isToday = section.key === 'today';
     return (
       <View style={styles.sectionHeader}>
@@ -71,18 +68,28 @@ export function TaskListScreen() {
     );
   }
 
-  function renderItem({ item }: { item: Task }) {
-    const member = item.assignee ? memberMap.get(item.assignee) : null;
+  function renderItem({ item }: { item: OverviewItem }) {
     return (
-      <TaskItem
-        task={item}
-        assigneeName={member?.displayName ?? null}
-        assigneeIndex={member?.index ?? 0}
-        onPress={() => navigation.navigate('TaskDetail', { taskId: item.id })}
-        onComplete={() => handleComplete(item.id)}
+      <OverviewItemRow
+        item={item}
+        memberMap={memberMap}
+        onPress={() => {
+          if (item.kind === 'task') {
+            navigation.navigate('TaskDetail', { taskId: item.data.id });
+          } else {
+            navigation.navigate('AppointmentDetail', { appointmentId: item.data.id });
+          }
+        }}
+        onComplete={item.kind === 'task' ? () => handleComplete(item.data.id) : undefined}
       />
     );
   }
+
+  const emptyText = filter === 'mine'
+    ? 'Nothing assigned to you.'
+    : filter === 'done'
+    ? 'No completed tasks yet.'
+    : 'Nothing coming up.';
 
   return (
     <View style={styles.container}>
@@ -90,11 +97,11 @@ export function TaskListScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.circleName}>{circle?.name ?? 'Care Circle'}</Text>
-          <Text style={styles.screenTitle}>Tasks</Text>
+          <Text style={styles.screenTitle}>Overview</Text>
         </View>
         <TouchableOpacity
           style={styles.headerAvatar}
-          onPress={() => navigation.navigate('UserSettings')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Settings' })}
         >
           <Text style={styles.headerAvatarText}>{headerInitial}</Text>
         </TouchableOpacity>
@@ -103,22 +110,17 @@ export function TaskListScreen() {
       {/* Segmented control */}
       <View style={styles.segmentedWrapper}>
         <View style={styles.segmented}>
-          <TouchableOpacity
-            style={[styles.segment, filter === 'all' && styles.segmentActive]}
-            onPress={() => setFilter('all')}
-          >
-            <Text style={[styles.segmentLabel, filter === 'all' && styles.segmentLabelActive]}>
-              All tasks
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segment, filter === 'mine' && styles.segmentActive]}
-            onPress={() => setFilter('mine')}
-          >
-            <Text style={[styles.segmentLabel, filter === 'mine' && styles.segmentLabelActive]}>
-              Mine
-            </Text>
-          </TouchableOpacity>
+          {(['all', 'mine', 'done'] as Filter[]).map((f) => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.segment, filter === f && styles.segmentActive]}
+              onPress={() => setFilter(f)}
+            >
+              <Text style={[styles.segmentLabel, filter === f && styles.segmentLabelActive]}>
+                {f === 'all' ? 'Open' : f === 'mine' ? 'Mine' : 'Done'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -129,14 +131,14 @@ export function TaskListScreen() {
         </View>
       ) : sections.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>
-            {filter === 'mine' ? 'No tasks assigned to you.' : 'No tasks yet.'}
-          </Text>
+          <Text style={styles.emptyText}>{emptyText}</Text>
         </View>
       ) : (
-        <SectionList
+        <SectionList<OverviewItem, OverviewSection>
           sections={sections}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) =>
+            item.kind === 'task' ? `task-${item.data.id}` : `appt-${item.data.id}`
+          }
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           stickySectionHeadersEnabled={false}
@@ -144,13 +146,51 @@ export function TaskListScreen() {
         />
       )}
 
-      {/* FAB */}
+      {/* FAB backdrop — closes menu when tapping outside */}
+      {fabOpen && (
+        <TouchableOpacity
+          style={styles.fabBackdrop}
+          onPress={() => setFabOpen(false)}
+          activeOpacity={1}
+        />
+      )}
+
+      {/* FAB speed-dial menu */}
+      {fabOpen && (
+        <View style={styles.fabMenu}>
+          <TouchableOpacity
+            style={styles.fabMenuItem}
+            onPress={() => { setFabOpen(false); navigation.navigate('AddAppointment', {}); }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.fabMenuIcon}>
+              <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} />
+            </View>
+            <Text style={styles.fabMenuLabel}>Appointment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.fabMenuItem}
+            onPress={() => { setFabOpen(false); navigation.navigate('AddTask', {}); }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.fabMenuIcon}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.sage} />
+            </View>
+            <Text style={styles.fabMenuLabel}>Task</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Main FAB */}
       <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddTask', {})}
+        style={[styles.fab, fabOpen && styles.fabActive]}
+        onPress={() => setFabOpen((o) => !o)}
         activeOpacity={0.85}
       >
-        <Text style={styles.fabIcon}>+</Text>
+        <Text style={[styles.fabIcon, fabOpen && styles.fabIconActive]}>
+          {fabOpen ? '×' : '+'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -268,6 +308,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textMuted,
   },
+  // FAB
   fab: {
     position: 'absolute',
     bottom: 32,
@@ -280,11 +321,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.shadow.sage,
   },
+  fabActive: {
+    backgroundColor: theme.colors.sageDark,
+  },
   fabIcon: {
     fontSize: 28,
     color: theme.colors.surface,
     lineHeight: 32,
     fontFamily: theme.fontFamily.sans,
     fontWeight: theme.fontWeight.regular,
+  },
+  fabIconActive: {
+    fontSize: 32,
+    lineHeight: 36,
+  },
+  // FAB speed-dial
+  fabBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(47, 46, 43, 0.25)',
+  },
+  fabMenu: {
+    position: 'absolute',
+    bottom: 100,
+    right: theme.spacing.screen,
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  fabMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.button,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    ...theme.shadow.lift,
+  },
+  fabMenuIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.sageTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabMenuLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textPrimary,
   },
 });

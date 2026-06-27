@@ -57,6 +57,17 @@ export async function completeTask(id: string): Promise<{ error: string | null }
   return { error: error?.message ?? null };
 }
 
+export async function getCompletedTasksForCircle(circleId: string): Promise<{ data: Task[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('circle_id', circleId)
+    .eq('completed', true)
+    .order('completed_at', { ascending: false, nullsFirst: false });
+
+  return { data: data ?? [], error: error?.message ?? null };
+}
+
 export async function getTasksForAppointment(appointmentId: string): Promise<{ data: Task[]; error: string | null }> {
   const { data, error } = await supabase
     .from('tasks')

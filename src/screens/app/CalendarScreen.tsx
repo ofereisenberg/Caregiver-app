@@ -133,7 +133,6 @@ export function CalendarScreen() {
   function renderItem({ item }: { item: CalendarItem }) {
     if (item.kind === 'appointment') {
       const appt = item.data;
-      const name = memberName(appt.assignee);
       return (
         <TouchableOpacity
           style={styles.row}
@@ -143,9 +142,7 @@ export function CalendarScreen() {
           <View style={styles.apptMarker} />
           <View style={styles.rowContent}>
             <Text style={styles.rowTitle}>{appt.title}</Text>
-            <Text style={styles.rowMeta}>
-              {formatApptTime(appt)}{name ? ` · ${name}` : ''}
-            </Text>
+            <Text style={styles.rowMeta}>{formatApptTime(appt)}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
         </TouchableOpacity>
@@ -184,6 +181,7 @@ export function CalendarScreen() {
         onDayPress={(day: DateData) => setSelectedDay(day.dateString)}
         markedDates={markedDates}
         enableSwipeMonths
+        firstDay={1}
         style={styles.calendar}
         theme={calendarTheme}
       />

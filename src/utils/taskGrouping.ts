@@ -1,6 +1,6 @@
 import { Task } from '../services/tasks';
 
-export type TaskSectionKey = 'today' | 'thisWeek' | 'later';
+export type TaskSectionKey = 'today' | 'thisWeek' | 'later' | 'done';
 
 export interface TaskSection {
   key: TaskSectionKey;
@@ -36,6 +36,24 @@ export function formatDueLabel(dueDate: string | null): string {
   return due.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }); // "12 Aug"
 }
 
+// Sort order within a group:
+//   1. No due_date before due_date (floats undated tasks to top of Later)
+//   2. Earlier due_date before later due_date
+//   3. Same date: no start_time before start_time (date-only tasks float to top)
+//   4. Both have start_time: ascending by start_time string ("HH:MM:SS" lexicographic)
+function sortByDateTime(a: Task, b: Task): number {
+  if (!a.due_date && !b.due_date) return 0;
+  if (!a.due_date) return -1;
+  if (!b.due_date) return 1;
+  const dateA = new Date(a.due_date).getTime();
+  const dateB = new Date(b.due_date).getTime();
+  if (dateA !== dateB) return dateA - dateB;
+  if (!a.start_time && !b.start_time) return 0;
+  if (!a.start_time) return -1;
+  if (!b.start_time) return 1;
+  return a.start_time.localeCompare(b.start_time);
+}
+
 export function groupTasksIntoSections(tasks: Task[]): TaskSection[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -63,6 +81,10 @@ export function groupTasksIntoSections(tasks: Task[]): TaskSection[] {
       laterItems.push(task);
     }
   }
+
+  todayItems.sort(sortByDateTime);
+  thisWeekItems.sort(sortByDateTime);
+  laterItems.sort(sortByDateTime);
 
   const sections: TaskSection[] = [];
 

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { Appointment, getAppointment } from '../services/appointments';
+import { AppointmentWithInvitees, getAppointment } from '../services/appointments';
 import { Task, getTasksForAppointment } from '../services/tasks';
 
 interface UseAppointmentResult {
-  appointment: Appointment | null;
+  appointment: AppointmentWithInvitees | null;
   prepTasks: Task[];
   loading: boolean;
   error: string | null;
@@ -12,7 +12,7 @@ interface UseAppointmentResult {
 }
 
 export function useAppointment(appointmentId: string): UseAppointmentResult {
-  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [appointment, setAppointment] = useState<AppointmentWithInvitees | null>(null);
   const [prepTasks, setPrepTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

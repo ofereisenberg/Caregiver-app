@@ -20,7 +20,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { getTask } from '../../services/tasks';
-import { createAppointment } from '../../services/appointments';
+import { createAppointment, getAppointment, updateAppointment } from '../../services/appointments';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -58,6 +58,8 @@ export function AddAppointmentScreen() {
 
   const taskId = route.params?.taskId;
   const dateParam = route.params?.date;
+  const appointmentId = route.params?.appointmentId;
+  const isEditMode = !!appointmentId;
 
   const [title, setTitle] = useState('');
   const [sourceTaskTitle, setSourceTaskTitle] = useState<string | null>(null);
@@ -71,7 +73,8 @@ export function AddAppointmentScreen() {
   const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
   const [location, setLocation] = useState('');
   const [recurrence, setRecurrence] = useState<string | null>(null);
-  const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [inviteeIds, setInviteeIds] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
   const [expandedRow, setExpandedRow] = useState<'location' | 'repeat' | 'assign' | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,10 +87,25 @@ export function AddAppointmentScreen() {
       if (data) {
         setTitle(data.title);
         setSourceTaskTitle(data.title);
-        if (data.assignee) setAssigneeId(data.assignee);
+        if (data.assignee) setInviteeIds([data.assignee]);
       }
     });
   }, [taskId]);
+
+  useEffect(() => {
+    if (!appointmentId) return;
+    getAppointment(appointmentId).then(({ data }) => {
+      if (!data) return;
+      setTitle(data.title);
+      setIsFullDay(data.is_full_day);
+      setStartDate(new Date(data.starts_at));
+      if (data.ends_at) setEndDate(new Date(data.ends_at));
+      setLocation(data.location ?? '');
+      setRecurrence(data.recurrence ?? null);
+      setInviteeIds(data.invitee_ids);
+      setVisibility(data.visibility ?? 'shared');
+    });
+  }, [appointmentId]);
 
   function handlePickerChange(_event: unknown, date?: Date) {
     setPickerMode(null); // Android auto-dismisses; this cleans up for both platforms
@@ -161,33 +179,50 @@ export function AddAppointmentScreen() {
       endsAt = new Date(endDate);
     }
 
-    const { data: appt, error: createError } = await createAppointment({
-      title: title.trim(),
-      circle_id: circle.id,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      is_full_day: isFullDay,
-      location: location.trim() || null,
-      recurrence,
-      assignee: assigneeId,
-      visibility: 'shared',
-    });
-
-    setSaving(false);
-
-    if (createError) {
-      setError(createError);
-    } else if (appt) {
-      navigation.replace('AppointmentDetail', { appointmentId: appt.id });
+    if (isEditMode && appointmentId) {
+      const { error: updateError } = await updateAppointment(appointmentId, {
+        title: title.trim(),
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        is_full_day: isFullDay,
+        location: location.trim() || null,
+        recurrence,
+        visibility,
+      }, inviteeIds);
+      setSaving(false);
+      if (updateError) {
+        setError(updateError);
+      } else {
+        navigation.goBack();
+      }
+    } else {
+      const { data: appt, error: createError } = await createAppointment({
+        title: title.trim(),
+        circle_id: circle.id,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        is_full_day: isFullDay,
+        location: location.trim() || null,
+        recurrence,
+        visibility,
+      }, inviteeIds);
+      setSaving(false);
+      if (createError) {
+        setError(createError);
+      } else if (appt) {
+        navigation.replace('AppointmentDetail', { appointmentId: appt.id });
+      }
     }
-  }, [title, isFullDay, startDate, endDate, location, recurrence, assigneeId, circle, session, navigation]);
+  }, [title, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, circle, session, navigation, isEditMode, appointmentId]);
 
   const canAdd = title.trim().length > 0 && (isFullDay || endDate > startDate) && !saving;
 
   const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? "Don't repeat";
-  const assigneeLabel = assigneeId
-    ? members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Unassigned'
-    : 'Unassigned';
+  const inviteeLabel = inviteeIds.length === 0
+    ? 'Nobody'
+    : inviteeIds
+        .map((id) => members.find((m) => m.user_id === id)?.displayName.split(' ')[0] ?? id)
+        .join(', ');
 
   const pickerValue = pickerMode === 'start-date' || pickerMode === 'start-time' ? startDate : endDate;
 
@@ -207,7 +242,7 @@ export function AddAppointmentScreen() {
           </View>
         )}
 
-        <Text style={styles.heading}>New appointment</Text>
+        <Text style={styles.heading}>{isEditMode ? 'Edit appointment' : 'New appointment'}</Text>
 
         {/* Title */}
         <TextInput
@@ -322,23 +357,41 @@ export function AddAppointmentScreen() {
           <Text style={styles.expandRowLabel}>
             <Text style={styles.expandRowPlus}>+ </Text>With
           </Text>
-          <Text style={styles.expandRowValue}>{assigneeLabel}</Text>
+          <Text style={styles.expandRowValue}>{inviteeLabel}</Text>
         </TouchableOpacity>
         {expandedRow === 'assign' && (
           <View style={styles.chipRow}>
-            {members.map((m) => (
-              <TouchableOpacity
-                key={m.user_id}
-                style={[styles.chip, assigneeId === m.user_id && styles.chipSelected]}
-                onPress={() => { setAssigneeId(assigneeId === m.user_id ? null : m.user_id); setExpandedRow(null); }}
-              >
-                <Text style={[styles.chipLabel, assigneeId === m.user_id && styles.chipLabelSelected]}>
-                  {m.displayName.split(' ')[0]}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {members.map((m) => {
+              const selected = inviteeIds.includes(m.user_id);
+              return (
+                <TouchableOpacity
+                  key={m.user_id}
+                  style={[styles.chip, selected && styles.chipSelected]}
+                  onPress={() => setInviteeIds(
+                    selected
+                      ? inviteeIds.filter((id) => id !== m.user_id)
+                      : [...inviteeIds, m.user_id]
+                  )}
+                >
+                  <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+                    {m.displayName.split(' ')[0]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
+
+        <View style={styles.rowDivider} />
+        <View style={styles.visibilityRow}>
+          <Text style={styles.expandRowLabel}>Only me</Text>
+          <Switch
+            value={visibility === 'private'}
+            onValueChange={(v) => setVisibility(v ? 'private' : 'shared')}
+            trackColor={{ false: theme.colors.borderMid, true: theme.colors.sage }}
+            thumbColor={theme.colors.surface}
+          />
+        </View>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -350,7 +403,7 @@ export function AddAppointmentScreen() {
         >
           {saving
             ? <ActivityIndicator color={theme.colors.surface} />
-            : <Text style={styles.addButtonLabel}>Add appointment</Text>
+            : <Text style={styles.addButtonLabel}>{isEditMode ? 'Save changes' : 'Add appointment'}</Text>
           }
         </TouchableOpacity>
       </ScrollView>
@@ -569,6 +622,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   chipLabelSelected: { color: theme.colors.sageDark },
+  visibilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
   errorText: {
     fontSize: theme.fontSize.small,
     fontFamily: theme.fontFamily.sans,

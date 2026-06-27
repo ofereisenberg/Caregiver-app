@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '../services/supabase';
-import { completeTask, getTasksForCircle, Task } from '../services/tasks';
+import { completeTask, getCompletedTasksForCircle, getTasksForCircle, Task } from '../services/tasks';
 import { groupTasksIntoSections, TaskSection } from '../utils/taskGrouping';
 
 interface UseTaskListResult {
@@ -14,7 +14,7 @@ interface UseTaskListResult {
 
 export function useTaskList(
   circleId: string | null,
-  filter: 'all' | 'mine',
+  filter: 'all' | 'mine' | 'done',
   currentUserId: string,
 ): UseTaskListResult {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -23,11 +23,13 @@ export function useTaskList(
 
   const fetchTasks = useCallback(async () => {
     if (!circleId) return;
-    const { data, error: fetchError } = await getTasksForCircle(circleId);
+    const { data, error: fetchError } = filter === 'done'
+      ? await getCompletedTasksForCircle(circleId)
+      : await getTasksForCircle(circleId);
     if (fetchError) setError(fetchError);
     else setTasks(data);
     setLoading(false);
-  }, [circleId]);
+  }, [circleId, filter]);
 
   // Always point to the latest fetchTasks without triggering subscription re-runs
   const fetchRef = useRef(fetchTasks);
@@ -70,7 +72,11 @@ export function useTaskList(
     ? tasks.filter((t) => t.assignee === currentUserId)
     : tasks;
 
-  const sections = groupTasksIntoSections(visibleTasks);
+  const sections = filter === 'done'
+    ? (visibleTasks.length > 0
+        ? [{ key: 'done' as const, title: 'Completed', count: visibleTasks.length, data: visibleTasks }]
+        : [])
+    : groupTasksIntoSections(visibleTasks);
 
   return { sections, loading, error, handleComplete, refresh: fetchTasks };
 }

@@ -109,6 +109,22 @@ Work through this before building anything new:
 
 ---
 
+## Deferred documentation task — Email auth setup guide
+
+Collect lessons learned from all chat sessions where we worked on email auth (Supabase + Resend + magic link + OTP + custom domain) and produce a guide at `docs/technical/email-auth-setup-guide.md`.
+
+The info is scattered across multiple chat sessions. Key topics to consolidate:
+
+- Resend SMTP setup and connecting it to Supabase
+- Supabase Auth email templates (each type: confirm signup, magic link, OTP, invite) — which variables go in each (`{{ .Token }}`, `{{ .ConfirmationURL }}`)
+- Supabase Auth Hooks (Send Email hook) — event types, how the hook payload works, which Resend template is called per event
+- Custom domain setup in Supabase + Namecheap DNS records (TXT + CNAME) — the "all records missing" gotcha
+- The distinction between the login OTP email and the "confirm your email address" signup email — they go through different paths and need separate templates
+- Propagation delay gotcha (wait before restarting verification in Supabase)
+- Testing: how to verify each email type is working end-to-end
+
+---
+
 ## Infrastructure
 
 Supabase project ID: `icmtktdbqrcgtbeiggdc`

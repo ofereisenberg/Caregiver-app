@@ -132,8 +132,23 @@ npx expo run:android
 
 ---
 
-## 7. Known Open Items
+## 7. Database Access
 
-- Supabase project not yet created (URL + anon key not in `.env`)
-- Schema / migrations not yet written
-- RLS policy design not yet done (simple: shared tasks visible to all authenticated users; private tasks to creator only)
+Supabase CLI is installed and authenticated. The Caregiver App project (`icmtktdbqrcgtbeiggdc`) is linked.
+Run SQL against the remote DB directly — **always ask the user before running destructive queries** (DROP, DELETE, ALTER):
+
+```powershell
+cd "c:\Users\ofere\Projects\caregiver-app"
+supabase db query "YOUR SQL HERE" --linked
+```
+
+Regenerate TypeScript types after schema changes:
+
+```powershell
+supabase gen types typescript --linked > src/types/database.ts
+```
+
+## 8. Known Open Items
+
+- Google OAuth client ID not yet configured (Calendar sync)
+- Apple Developer account deferred (EAS Build post-MVP)

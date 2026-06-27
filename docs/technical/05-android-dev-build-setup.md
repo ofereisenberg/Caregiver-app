@@ -118,11 +118,121 @@ Re-apply the Foojay plugin comment (Step 3). It will be overwritten every time `
 
 ---
 
+## Installing on a Second Device
+
+The setup steps (JDKs, Foojay fix, gradle.properties) are one-time and already done. Installing on a new phone only requires Steps 3 and 4.
+
+### Step 1 — Enable Developer Mode on the new phone
+
+Settings → About phone → tap **Build number** 7 times until "You are now a developer" toast appears → go back → **Developer options** → turn on **USB debugging**
+
+### Step 2 — Connect and verify
+
+Connect the phone via USB. When prompted on the phone, tap **Allow** for USB debugging from this computer.
+
+```powershell
+adb devices
+```
+
+You should see two entries if both phones are connected. Note the new phone's serial (the long alphanumeric string in the first column).
+
+### Step 3 — Re-apply the Foojay fix
+
+Check whether it's still commented out — it may have survived if you haven't run `npm install` since last build:
+
+```powershell
+Select-String "foojay" "node_modules/@react-native/gradle-plugin/settings.gradle.kts"
+```
+
+If the line is not commented, re-apply the comment (see Step 3 in the main guide above).
+
+### Step 4 — Build and install targeting the new phone
+
+```powershell
+$env:ANDROID_SERIAL = "NEW_PHONE_SERIAL"   # wife's phone serial from adb devices
+$env:JAVA_HOME = "C:\Users\ofere\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+$env:ANDROID_HOME = "C:\Users\ofere\AppData\Local\Android\Sdk"
+npx expo run:android
+```
+
+If no native code changed since the last build, Expo reuses the existing native build and just installs — this takes ~30 seconds instead of several minutes.
+
+### Step 5 — Switch back to your phone
+
+After the wife's phone is set up, restore your serial for normal development:
+
+```powershell
+$env:ANDROID_SERIAL = "R58M53P4QDM"
+```
+
+---
+
+## Dev Build Limitation: Requires Metro (Same WiFi)
+
+A dev build is **not a standalone app**. When it starts, it fetches the JS bundle from the Metro bundler running on your development machine. The phone's IP must be able to reach your PC's IP on port 8081.
+
+**This means:**
+
+- Metro must be running (`npx expo start`) whenever the wife uses the app
+- Both phones must be on the same WiFi network as your PC
+- If she opens the app away from home, she'll see a "Development server not running" error
+
+**For testing on the same home WiFi — no extra steps needed.** After USB install, the dev build automatically knows your machine's local IP.
+
+**For independent testing (wife uses the phone on her own, away from your machine):**
+You need a standalone build. The options are:
+
+### Option A — EAS Build (recommended, free tier available)
+
+EAS Build compiles the app in the cloud and produces a downloadable APK with the JS bundle embedded — no Metro required at runtime.
+
+```powershell
+# One-time setup
+npm install -g eas-cli
+eas login          # log in with your Expo account
+
+# In the project root
+eas build --platform android --profile preview
+```
+
+Add a `preview` profile to `eas.json` first:
+
+```json
+{
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
+```
+
+EAS emails you a download link when done (~10-15 min). Install the APK on any Android phone without USB or developer mode — just enable "Install from unknown sources" in Settings → Security.
+
+### Option B — Local release APK (no EAS account needed)
+
+Requires a signing keystore. For a quick test build only (not production):
+
+```powershell
+cd android
+./gradlew assembleRelease
+```
+
+The APK is at `android/app/build/outputs/apk/release/app-release.apk`. Transfer it to the phone (Google Drive, email, USB file transfer) and install it.
+
+> Note: an unsigned release build will fail to install. You need to set up a keystore in `android/app/build.gradle` or use the debug variant (`assembleDebug`) which self-signs automatically.
+
+For now, same-WiFi testing is the fastest path. Set up EAS when you're ready for the wife to use the app independently.
+
+---
+
 ## Infrastructure reference
 
 | Item | Value |
 |---|---|
-| Phone ADB serial | `R58M53P4QDM` |
+| Your phone ADB serial | `R58M53P4QDM` |
 | JDK 17 path | `C:\Users\ofere\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.19.10-hotspot` |
 | JDK 21 path | `C:\Program Files\Android\Android Studio\jbr` |
 | Android SDK | `C:\Users\ofere\AppData\Local\Android\Sdk` |

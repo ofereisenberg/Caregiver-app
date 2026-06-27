@@ -26,7 +26,15 @@
 
 1. Plug your phone into your PC via USB
 2. On your phone, tap **Allow** when prompted to trust the computer
-3. Verify Android Studio sees it: open Android Studio → **Device Manager** — your phone should appear in the list
+3. Verify the connection **in the terminal** — Android Studio's Device Manager is unreliable on Windows and may show nothing even when the device is ready:
+
+```powershell
+adb devices
+```
+
+You should see your device serial with status `device`. If it shows `unauthorized`, tap **Allow** on the phone screen and run `adb devices` again.
+
+> ⚠️ **Do not rely on Android Studio → Device Manager to confirm the connection.** It failed to detect the device in earlier setup attempts even when `adb devices` showed it correctly. Always use `adb devices` as the source of truth.
 
 ---
 
