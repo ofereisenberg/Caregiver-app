@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid, DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,13 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useProjectList } from '../../hooks/useProjectList';
 import { createTask } from '../../services/tasks';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AddTask'>;
 
-type ExpandedRow = 'repeat' | 'assign' | 'when' | null;
+type ExpandedRow = 'repeat' | 'assign' | 'when' | 'project' | null;
 type RepeatValue = 'every_few_days' | 'weekly' | 'monthly' | null;
 
 const REPEAT_OPTIONS: { label: string; value: RepeatValue }[] = [
@@ -60,6 +61,7 @@ export function AddTaskScreen() {
   const route = useRoute<Route>();
   const { session } = useAuth();
   const { circle, members } = useCircle();
+  const { projects } = useProjectList(circle?.id ?? null);
 
   const titleRef = useRef<TextInput>(null);
   const [title, setTitle] = useState('');
@@ -70,6 +72,7 @@ export function AddTaskScreen() {
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [timePickerMode, setTimePickerMode] = useState<TimePickerMode | null>(null);
   const [onlyMe, setOnlyMe] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(route.params?.projectId ?? null);
   const [expandedRow, setExpandedRow] = useState<ExpandedRow>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,10 +114,10 @@ export function AddTaskScreen() {
     }
   }
 
-  function handleIosTimeChange(_event: unknown, selected?: Date) {
+  function handleIosTimeChange(_event: DateTimePickerChangeEvent, selected: Date) {
     const mode = timePickerMode;
     setTimePickerMode(null);
-    if (!selected || !mode) return;
+    if (!mode) return;
     if (mode === 'start') setStartTime(selected);
     else setEndTime(selected);
   }
@@ -135,6 +138,7 @@ export function AddTaskScreen() {
       end_time: timeToString(endTime),
       visibility: onlyMe ? 'private' : 'shared',
       parent_appointment_id: route.params?.parentAppointmentId ?? null,
+      project_id: projectId,
     });
 
     setSaving(false);
@@ -258,9 +262,7 @@ export function AddTaskScreen() {
             mode="date"
             display="inline"
             minimumDate={new Date()}
-            onChange={(_event, selected) => {
-              if (selected) setDueDate(selected);
-            }}
+            onValueChange={(_e, date) => { if (date) setDueDate(date); }}
             style={styles.inlinePicker}
           />
         )}
@@ -286,7 +288,8 @@ export function AddTaskScreen() {
             mode="time"
             display="spinner"
             minuteInterval={5}
-            onChange={handleIosTimeChange}
+            onValueChange={handleIosTimeChange}
+            onDismiss={() => setTimePickerMode(null)}
           />
         )}
         <View style={styles.rowDivider} />
@@ -304,6 +307,42 @@ export function AddTaskScreen() {
             thumbColor={theme.colors.surfaceElevated}
           />
         </View>
+
+        {/* Link to project */}
+        {projects.length > 0 && (
+          <>
+            <View style={styles.rowDivider} />
+            <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('project')}>
+              <Text style={styles.expandRowLabel}>
+                <Text style={styles.expandRowPlus}>+ </Text>Project
+              </Text>
+              <Text style={styles.expandRowValue}>
+                {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
+              </Text>
+            </TouchableOpacity>
+            {expandedRow === 'project' && (
+              <View style={styles.chipRow}>
+                <TouchableOpacity
+                  style={[styles.chip, projectId === null && styles.chipSelected]}
+                  onPress={() => { setProjectId(null); setExpandedRow(null); }}
+                >
+                  <Text style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</Text>
+                </TouchableOpacity>
+                {projects.filter((p) => p.status !== 'done').map((proj) => (
+                  <TouchableOpacity
+                    key={proj.id}
+                    style={[styles.chip, projectId === proj.id && styles.chipSelected]}
+                    onPress={() => { setProjectId(proj.id); setExpandedRow(null); }}
+                  >
+                    <Text style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                      {proj.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
+        )}
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 

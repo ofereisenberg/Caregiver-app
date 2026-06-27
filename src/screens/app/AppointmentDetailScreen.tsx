@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,8 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
+import { useProjectList } from '../../hooks/useProjectList';
 import { useAppointment } from '../../hooks/useAppointment';
-import { deleteAppointment } from '../../services/appointments';
+import { deleteAppointment, updateAppointment } from '../../services/appointments';
 import { completeTask } from '../../services/tasks';
 import { AppStackParamList } from '../../navigation/types';
 
@@ -52,9 +53,18 @@ export function AppointmentDetailScreen() {
   const { appointmentId } = route.params;
 
   const { appointment, prepTasks, loading, refresh } = useAppointment(appointmentId);
-  const { members } = useCircle();
+  const { members, circle } = useCircle();
+  const { projects } = useProjectList(circle?.id ?? null);
+
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
 
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+
+  async function handleChangeProject(value: string | null) {
+    setProjectPickerOpen(false);
+    await updateAppointment(appointmentId, { project_id: value }, appointment?.invitee_ids ?? []);
+    refresh();
+  }
 
   const inviteeNames = (appointment?.invitee_ids ?? [])
     .map((id) => members.find((m) => m.user_id === id)?.displayName ?? null)
@@ -151,6 +161,52 @@ export function AppointmentDetailScreen() {
               {appointment.visibility === 'private' ? 'Only me' : 'Shared'}
             </Text>
           </View>
+          {projects.length > 0 && (
+            <>
+              <View style={styles.rowDivider} />
+              <TouchableOpacity style={styles.fieldRow} onPress={() => setProjectPickerOpen((v) => !v)}>
+                <Text style={styles.fieldLabel}>Project</Text>
+                <View style={styles.fieldValueRow}>
+                  <Text style={styles.fieldValue}>
+                    {appointment.project_id
+                      ? (projects.find((p) => p.id === appointment.project_id)?.title ?? 'None')
+                      : 'None'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
+                </View>
+              </TouchableOpacity>
+              {projectPickerOpen && (
+                <View style={styles.projectChipRow}>
+                  <TouchableOpacity
+                    style={[styles.chip, !appointment.project_id && styles.chipSelected]}
+                    onPress={() => handleChangeProject(null)}
+                  >
+                    <Text style={[styles.chipLabel, !appointment.project_id && styles.chipLabelSelected]}>None</Text>
+                  </TouchableOpacity>
+                  {projects.map((proj) => (
+                    <TouchableOpacity
+                      key={proj.id}
+                      style={[styles.chip, appointment.project_id === proj.id && styles.chipSelected]}
+                      onPress={() => handleChangeProject(proj.id)}
+                    >
+                      <Text style={[styles.chipLabel, appointment.project_id === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                        {proj.title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {appointment.project_id && (
+                <TouchableOpacity
+                  style={styles.projectLinkRow}
+                  onPress={() => navigation.navigate('ProjectDetail', { projectId: appointment.project_id! })}
+                >
+                  <Ionicons name="folder-outline" size={14} color={theme.colors.sageDark} />
+                  <Text style={styles.projectLinkLabel}>View project</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
 
         <View style={styles.sectionHeaderRow}>
@@ -225,4 +281,34 @@ const styles = StyleSheet.create({
   addPrepLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansMedium, fontWeight: theme.fontWeight.medium, color: theme.colors.sage },
   deleteButton: { alignItems: 'center', paddingVertical: theme.spacing.md },
   deleteLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.overdueFg },
+  projectChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  chipSelected: { backgroundColor: theme.colors.sageTint, borderColor: theme.colors.sageLight },
+  chipLabel: { fontSize: theme.fontSize.label, fontFamily: theme.fontFamily.sansMedium, fontWeight: theme.fontWeight.medium, color: theme.colors.textSecondary },
+  chipLabelSelected: { color: theme.colors.sageDark },
+  projectLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  projectLinkLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
+  },
 });

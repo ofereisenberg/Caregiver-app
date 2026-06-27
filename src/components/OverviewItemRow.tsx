@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu';
 
 import { theme } from '../constants/theme';
+import { DropdownMenuItem } from './DropdownMenu';
 import { Appointment } from '../services/appointments';
 import { Task } from '../services/tasks';
 import { OverviewItem } from '../utils/overviewGrouping';
@@ -18,8 +20,12 @@ const AVATAR_COLORS = [
 interface Props {
   item: OverviewItem;
   memberMap: Map<string, { displayName: string; index: number }>;
+  projectMap?: Map<string, string>;
   onPress: () => void;
   onComplete?: () => void;
+  onUncheck?: () => void;
+  onProjectTagPress?: () => void;
+  menuItems?: DropdownMenuItem[];
 }
 
 function formatApptMeta(appt: Appointment): string {
@@ -41,9 +47,31 @@ function formatTaskTimeMeta(task: Task): string | null {
   return `${start} – ${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
 }
 
-export function OverviewItemRow({ item, memberMap, onPress, onComplete }: Props) {
+function ItemMenu({ items }: { items: DropdownMenuItem[] }) {
+  return (
+    <Menu>
+      <MenuTrigger style={styles.menuButton}>
+        <Ionicons name="ellipsis-horizontal" size={18} color={theme.colors.textMuted} />
+      </MenuTrigger>
+      <MenuOptions customStyles={menuOptionStyles}>
+        {items.map((item, idx) => (
+          <MenuOption key={item.label} onSelect={item.onPress}>
+            {idx > 0 && <View style={styles.menuDivider} />}
+            <Text style={[styles.menuItemLabel, item.destructive && styles.menuItemLabelDestructive]}>
+              {item.label}
+            </Text>
+          </MenuOption>
+        ))}
+      </MenuOptions>
+    </Menu>
+  );
+}
+
+export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComplete, onUncheck, onProjectTagPress, menuItems }: Props) {
   if (item.kind === 'appointment') {
     const appt = item.data;
+    const projectName = appt.project_id && projectMap ? projectMap.get(appt.project_id) : null;
+
     return (
       <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.apptIcon}>
@@ -55,7 +83,14 @@ export function OverviewItemRow({ item, memberMap, onPress, onComplete }: Props)
           {!!appt.location && (
             <Text style={styles.apptLocation} numberOfLines={1}>{appt.location}</Text>
           )}
+          {projectName && (
+            <TouchableOpacity style={styles.projectTag} onPress={onProjectTagPress} hitSlop={4}>
+              <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
+              <Text style={styles.projectTagText} numberOfLines={1}>{projectName}</Text>
+            </TouchableOpacity>
+          )}
         </View>
+        {menuItems && <ItemMenu items={menuItems} />}
       </TouchableOpacity>
     );
   }
@@ -70,14 +105,15 @@ export function OverviewItemRow({ item, memberMap, onPress, onComplete }: Props)
   const avatarFg = idx === 0 ? theme.colors.sageDark
     : idx === 1 ? theme.colors.overdueFg
     : theme.colors.textSecondary;
+  const projectName = task.project_id && projectMap ? projectMap.get(task.project_id) : null;
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <TouchableOpacity
         style={[styles.checkbox, task.completed && styles.checkboxDone]}
-        onPress={task.completed ? undefined : onComplete}
+        onPress={task.completed ? onUncheck : onComplete}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        activeOpacity={task.completed ? 1 : 0.7}
+        activeOpacity={task.completed && !onUncheck ? 1 : 0.7}
       >
         {task.completed
           ? <Text style={styles.checkmark}>✓</Text>
@@ -106,6 +142,12 @@ export function OverviewItemRow({ item, memberMap, onPress, onComplete }: Props)
             </View>
           )}
         </View>
+        {projectName && (
+          <TouchableOpacity style={styles.projectTag} onPress={onProjectTagPress} hitSlop={4}>
+            <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
+            <Text style={styles.projectTagText} numberOfLines={1}>{projectName}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {task.assignee ? (
@@ -119,9 +161,26 @@ export function OverviewItemRow({ item, memberMap, onPress, onComplete }: Props)
           <Text style={styles.avatarTextUnassigned}>?</Text>
         </View>
       )}
+      {menuItems && <ItemMenu items={menuItems} />}
     </TouchableOpacity>
   );
 }
+
+const menuOptionStyles = {
+  optionsContainer: {
+    borderRadius: theme.borderRadius.card,
+    overflow: 'hidden' as const,
+    width: 210,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  optionWrapper: {
+    padding: 0,
+  },
+};
 
 const styles = StyleSheet.create({
   row: {
@@ -133,7 +192,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider,
   },
-  // Appointment left icon
   apptIcon: {
     width: 24,
     height: 24,
@@ -144,7 +202,6 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
     flexShrink: 0,
   },
-  // Task checkbox
   checkbox: {
     width: 24,
     height: 24,
@@ -171,7 +228,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.sansBold,
     fontWeight: theme.fontWeight.bold,
   },
-  // Shared content
   content: {
     flex: 1,
     gap: theme.spacing.xs,
@@ -187,7 +243,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: theme.colors.textMuted,
   },
-  // Task meta row
   taskMeta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,7 +289,6 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.textMuted,
   },
-  // Appointment meta
   apptMeta: {
     fontSize: theme.fontSize.small,
     fontFamily: theme.fontFamily.sans,
@@ -245,7 +299,45 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textFaint,
   },
-  // Task avatar
+  projectTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.sageTint,
+    borderRadius: theme.borderRadius.badge,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    marginTop: theme.spacing.xs,
+  },
+  projectTagText: {
+    fontSize: theme.fontSize.micro,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
+    maxWidth: 160,
+  },
+  menuButton: {
+    paddingLeft: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    flexShrink: 0,
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.divider,
+    marginHorizontal: theme.spacing.md,
+  },
+  menuItemLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textPrimary,
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  menuItemLabelDestructive: {
+    color: theme.colors.overdueFg,
+  },
   avatar: {
     width: 32,
     height: 32,

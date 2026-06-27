@@ -78,6 +78,15 @@ export async function getTasksForAppointment(appointmentId: string): Promise<{ d
   return { data: data ?? [], error: error?.message ?? null };
 }
 
+export async function uncompleteTask(id: string): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('tasks')
+    .update({ completed: false, completed_at: null })
+    .eq('id', id);
+
+  return { error: error?.message ?? null };
+}
+
 export async function deleteTask(id: string): Promise<{ error: string | null }> {
   const { error } = await supabase
     .from('tasks')

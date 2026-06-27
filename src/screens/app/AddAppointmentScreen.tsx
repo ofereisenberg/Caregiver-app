@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useProjectList } from '../../hooks/useProjectList';
 import { getTask } from '../../services/tasks';
 import { createAppointment, getAppointment, updateAppointment } from '../../services/appointments';
 import { AppStackParamList } from '../../navigation/types';
@@ -26,6 +27,7 @@ import { AppStackParamList } from '../../navigation/types';
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AddAppointment'>;
 type PickerMode = 'start-date' | 'end-date' | 'start-time' | 'end-time';
+type ExpandedRow = 'location' | 'repeat' | 'assign' | 'project';
 
 const RECURRENCE_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Don't repeat", value: null },
@@ -55,6 +57,7 @@ export function AddAppointmentScreen() {
   const route = useRoute<Route>();
   const { session } = useAuth();
   const { circle, members } = useCircle();
+  const { projects } = useProjectList(circle?.id ?? null);
 
   const taskId = route.params?.taskId;
   const dateParam = route.params?.date;
@@ -75,7 +78,8 @@ export function AddAppointmentScreen() {
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [inviteeIds, setInviteeIds] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
-  const [expandedRow, setExpandedRow] = useState<'location' | 'repeat' | 'assign' | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(route.params?.projectId ?? null);
+  const [expandedRow, setExpandedRow] = useState<ExpandedRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,9 +111,8 @@ export function AddAppointmentScreen() {
     });
   }, [appointmentId]);
 
-  function handlePickerChange(_event: unknown, date?: Date) {
+  function handlePickerChange(_event: DateTimePickerChangeEvent, date: Date) {
     setPickerMode(null); // Android auto-dismisses; this cleans up for both platforms
-    if (!date) return;
 
     switch (pickerMode) {
       case 'start-date': {
@@ -151,7 +154,7 @@ export function AddAppointmentScreen() {
     }
   }
 
-  function toggleRow(row: 'location' | 'repeat' | 'assign') {
+  function toggleRow(row: ExpandedRow) {
     const next = expandedRow === row ? null : row;
     setExpandedRow(next);
     if (next === 'location') {
@@ -205,6 +208,7 @@ export function AddAppointmentScreen() {
         location: location.trim() || null,
         recurrence,
         visibility,
+        project_id: projectId,
       }, inviteeIds);
       setSaving(false);
       if (createError) {
@@ -393,6 +397,42 @@ export function AddAppointmentScreen() {
           />
         </View>
 
+        {/* Link to project */}
+        {projects.length > 0 && (
+          <>
+            <View style={styles.rowDivider} />
+            <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('project')}>
+              <Text style={styles.expandRowLabel}>
+                <Text style={styles.expandRowPlus}>+ </Text>Project
+              </Text>
+              <Text style={styles.expandRowValue}>
+                {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
+              </Text>
+            </TouchableOpacity>
+            {expandedRow === 'project' && (
+              <View style={styles.chipRow}>
+                <TouchableOpacity
+                  style={[styles.chip, projectId === null && styles.chipSelected]}
+                  onPress={() => { setProjectId(null); setExpandedRow(null); }}
+                >
+                  <Text style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</Text>
+                </TouchableOpacity>
+                {projects.filter((p) => p.status !== 'done').map((proj) => (
+                  <TouchableOpacity
+                    key={proj.id}
+                    style={[styles.chip, projectId === proj.id && styles.chipSelected]}
+                    onPress={() => { setProjectId(proj.id); setExpandedRow(null); }}
+                  >
+                    <Text style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                      {proj.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
+        )}
+
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <TouchableOpacity
@@ -416,7 +456,8 @@ export function AddAppointmentScreen() {
           display={pickerMode.includes('time') ? 'spinner' : 'default'}
           minuteInterval={5}
           minimumDate={pickerMode === 'end-date' ? startDate : undefined}
-          onChange={handlePickerChange}
+          onValueChange={handlePickerChange}
+          onDismiss={() => setPickerMode(null)}
         />
       )}
     </KeyboardAvoidingView>

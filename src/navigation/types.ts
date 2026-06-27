@@ -10,18 +10,20 @@ export type AuthStackParamList = {
 
 export type BottomTabParamList = {
   Tasks: undefined;
+  Projects: undefined;
   Calendar: undefined;
-  Notes: undefined;
-  Settings: undefined;
 };
 
 export type AppStackParamList = {
   MainTabs: NavigatorScreenParams<BottomTabParamList>;
   TaskDetail: { taskId: string };
-  AddTask: { parentAppointmentId?: string };
+  AddTask: { parentAppointmentId?: string; projectId?: string };
   AppointmentDetail: { appointmentId: string };
-  AddAppointment: { taskId?: string; date?: string; appointmentId?: string };
+  AddAppointment: { taskId?: string; date?: string; appointmentId?: string; projectId?: string };
+  ProjectDetail: { projectId: string };
+  AddProject: undefined;
   DailyDigest: undefined;
   CircleAdmin: undefined;
   InviteManagement: undefined;
+  UserSettings: undefined;
 };

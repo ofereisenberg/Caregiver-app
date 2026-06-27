@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   SectionList,
   StyleSheet,
   Text,
@@ -15,8 +16,12 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useOverview } from '../../hooks/useOverview';
+import { useProjectList } from '../../hooks/useProjectList';
+import { DropdownMenuItem } from '../../components/DropdownMenu';
 import { OverviewItemRow } from '../../components/OverviewItemRow';
 import { OverviewItem, OverviewSection } from '../../utils/overviewGrouping';
+import { updateTask, deleteTask, uncompleteTask } from '../../services/tasks';
+import { updateAppointment, deleteAppointment } from '../../services/appointments';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -35,6 +40,14 @@ export function TaskListScreen() {
     circle?.id ?? null,
     filter,
   );
+
+  const { projects } = useProjectList(circle?.id ?? null);
+
+  const projectMap = useMemo(() => {
+    const map = new Map<string, string>();
+    projects.forEach((p) => map.set(p.id, p.title));
+    return map;
+  }, [projects]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,11 +81,83 @@ export function TaskListScreen() {
     );
   }
 
+  function buildMenuItems(item: OverviewItem): DropdownMenuItem[] {
+    const hasProject = !!item.data.project_id;
+    const activeProjects = projects.filter((p) => p.status !== 'done');
+
+    const deleteItem = async () => {
+      if (item.kind === 'task') await deleteTask(item.data.id);
+      else await deleteAppointment(item.data.id);
+      refresh();
+    };
+
+    const confirmDelete = () => {
+      Alert.alert(`Delete ${item.kind}`, 'This cannot be undone.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: deleteItem },
+      ]);
+    };
+
+    const linkToProject = (projectId: string) => {
+      if (item.kind === 'task') updateTask(item.data.id, { project_id: projectId }).then(() => refresh());
+      else updateAppointment(item.data.id, { project_id: projectId }).then(() => refresh());
+    };
+
+    const unlinkProject = () => {
+      if (item.kind === 'task') updateTask(item.data.id, { project_id: null }).then(() => refresh());
+      else updateAppointment(item.data.id, { project_id: null }).then(() => refresh());
+    };
+
+    const showProjectPicker = () => {
+      if (activeProjects.length === 0) {
+        Alert.alert('No projects', 'Create a project first, then link items to it.');
+        return;
+      }
+      Alert.alert(
+        'Add to project',
+        undefined,
+        [
+          ...activeProjects.map((p) => ({ text: p.title, onPress: () => linkToProject(p.id) })),
+          { text: 'Cancel', style: 'cancel' as const },
+        ],
+      );
+    };
+
+    const items: DropdownMenuItem[] = [];
+    if (hasProject) {
+      items.push({ label: 'Change project', onPress: showProjectPicker });
+      items.push({ label: 'Remove from project', onPress: unlinkProject });
+    } else {
+      items.push({ label: 'Add to project', onPress: showProjectPicker });
+    }
+    items.push({ label: 'Delete', destructive: true, onPress: confirmDelete });
+    return items;
+  }
+
+  function handleUncheck(taskId: string) {
+    Alert.alert(
+      'Re-open task?',
+      'This will move it back to your active list.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Re-open',
+          onPress: async () => {
+            await uncompleteTask(taskId);
+            refresh();
+          },
+        },
+      ],
+    );
+  }
+
   function renderItem({ item }: { item: OverviewItem }) {
+    const itemProjectId = item.data.project_id ?? null;
     return (
       <OverviewItemRow
         item={item}
         memberMap={memberMap}
+        projectMap={projectMap}
         onPress={() => {
           if (item.kind === 'task') {
             navigation.navigate('TaskDetail', { taskId: item.data.id });
@@ -81,6 +166,9 @@ export function TaskListScreen() {
           }
         }}
         onComplete={item.kind === 'task' ? () => handleComplete(item.data.id) : undefined}
+        onUncheck={item.kind === 'task' && filter === 'done' ? () => handleUncheck(item.data.id) : undefined}
+        onProjectTagPress={itemProjectId ? () => navigation.navigate('ProjectDetail', { projectId: itemProjectId }) : undefined}
+        menuItems={buildMenuItems(item)}
       />
     );
   }
@@ -101,7 +189,7 @@ export function TaskListScreen() {
         </View>
         <TouchableOpacity
           style={styles.headerAvatar}
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Settings' })}
+          onPress={() => navigation.navigate('UserSettings')}
         >
           <Text style={styles.headerAvatarText}>{headerInitial}</Text>
         </TouchableOpacity>
@@ -192,6 +280,7 @@ export function TaskListScreen() {
           {fabOpen ? '×' : '+'}
         </Text>
       </TouchableOpacity>
+
     </View>
   );
 }
@@ -337,7 +426,7 @@ const styles = StyleSheet.create({
   },
   // FAB speed-dial
   fabBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(47, 46, 43, 0.25)',
   },
   fabMenu: {

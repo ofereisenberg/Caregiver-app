@@ -11,13 +11,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid, DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
+import { useProjectList } from '../../hooks/useProjectList';
 import { useTask } from '../../hooks/useTask';
 import { completeTask, deleteTask, updateTask } from '../../services/tasks';
 import { formatDueLabel, isTaskOverdue } from '../../utils/taskGrouping';
@@ -26,7 +27,7 @@ import { AppStackParamList } from '../../navigation/types';
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'TaskDetail'>;
 
-type ExpandedRow = 'assignee' | 'repeat' | 'when' | null;
+type ExpandedRow = 'assignee' | 'repeat' | 'when' | 'project' | null;
 type TimePickerMode = 'start' | 'end';
 
 function formatTimeDisplay(d: Date): string {
@@ -69,13 +70,15 @@ export function TaskDetailScreen() {
   const { taskId } = route.params;
 
   const { task, loading, refresh } = useTask(taskId);
-  const { members } = useCircle();
+  const { members, circle } = useCircle();
+  const { projects } = useProjectList(circle?.id ?? null);
 
   // Local editable state — initialised from task on first load
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [repeat, setRepeat] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [timePickerMode, setTimePickerMode] = useState<TimePickerMode | null>(null);
@@ -99,6 +102,7 @@ export function TaskDetailScreen() {
       setEndTime(parseTimeString(task.end_time));
       setVisibility(task.visibility);
       setNoteText(task.progress_note ?? '');
+      setProjectId(task.project_id ?? null);
     }
   }, [task]);
 
@@ -141,6 +145,12 @@ export function TaskDetailScreen() {
     await updateTask(taskId, { recurrence: value });
   }
 
+  async function changeProject(value: string | null) {
+    setProjectId(value);
+    setExpandedRow(null);
+    await updateTask(taskId, { project_id: value });
+  }
+
   async function changeVisibility(value: boolean) {
     const vis = value ? 'private' : 'shared';
     setVisibility(vis);
@@ -164,11 +174,9 @@ export function TaskDetailScreen() {
     }
   }
 
-  async function handleIosDateChange(_event: unknown, selected?: Date) {
-    if (selected) {
-      setDueDate(selected);
-      await updateTask(taskId, { due_date: selected.toISOString().split('T')[0] });
-    }
+  async function handleIosDateChange(_event: DateTimePickerChangeEvent, selected: Date) {
+    setDueDate(selected);
+    await updateTask(taskId, { due_date: selected.toISOString().split('T')[0] });
   }
 
   function handleTimePress(mode: TimePickerMode) {
@@ -194,10 +202,10 @@ export function TaskDetailScreen() {
     }
   }
 
-  async function handleIosTimeChange(_event: unknown, selected?: Date) {
+  async function handleIosTimeChange(_event: DateTimePickerChangeEvent, selected: Date) {
     const mode = timePickerMode;
     setTimePickerMode(null);
-    if (!selected || !mode) return;
+    if (!mode) return;
     if (mode === 'start') {
       setStartTime(selected);
       await updateTask(taskId, { start_time: timeToString(selected) });
@@ -388,7 +396,7 @@ export function TaskDetailScreen() {
               value={dueDate ?? new Date()}
               mode="date"
               display="inline"
-              onChange={handleIosDateChange}
+              onValueChange={handleIosDateChange}
             />
           )}
           {dueDate !== null && (
@@ -413,7 +421,8 @@ export function TaskDetailScreen() {
               mode="time"
               display="spinner"
               minuteInterval={5}
-              onChange={handleIosTimeChange}
+              onValueChange={handleIosTimeChange}
+              onDismiss={() => setTimePickerMode(null)}
             />
           )}
           {dueDate !== null && (
@@ -433,6 +442,55 @@ export function TaskDetailScreen() {
               thumbColor={theme.colors.surfaceElevated}
             />
           </View>
+
+          {/* Project link */}
+          {projects.length > 0 && (
+            <>
+              <View style={styles.rowDivider} />
+              <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('project')}>
+                <Text style={styles.fieldLabel}>Project</Text>
+                <View style={styles.fieldValueRow}>
+                  <Text style={styles.fieldValue}>
+                    {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
+                </View>
+              </TouchableOpacity>
+              {expandedRow === 'project' && (
+                <View style={styles.chipRow}>
+                  <TouchableOpacity
+                    style={[styles.chip, projectId === null && styles.chipSelected]}
+                    onPress={() => changeProject(null)}
+                  >
+                    <Text style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</Text>
+                  </TouchableOpacity>
+                  {projects.map((proj) => (
+                    <TouchableOpacity
+                      key={proj.id}
+                      style={[styles.chip, projectId === proj.id && styles.chipSelected]}
+                      onPress={() => changeProject(proj.id)}
+                    >
+                      <Text style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                        {proj.title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {/* Navigate to project detail */}
+              {projectId && (
+                <TouchableOpacity
+                  style={styles.projectLinkRow}
+                  onPress={() => navigation.navigate('ProjectDetail', { projectId: projectId! })}
+                >
+                  <Ionicons name="folder-outline" size={14} color={theme.colors.sageDark} />
+                  <Text style={styles.projectLinkLabel}>
+                    View project
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
 
         {/* Progress note */}
@@ -612,6 +670,19 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.small,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.overdueFg,
+  },
+  projectLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  projectLinkLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
   },
   timeRangeRow: {
     flexDirection: 'row',

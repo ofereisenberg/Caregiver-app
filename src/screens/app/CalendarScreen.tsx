@@ -15,6 +15,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useAppointmentList } from '../../hooks/useAppointmentList';
+import { useProjectList } from '../../hooks/useProjectList';
 import { useTaskList } from '../../hooks/useTaskList';
 import { Appointment } from '../../services/appointments';
 import { Task } from '../../services/tasks';
@@ -54,7 +55,19 @@ export function CalendarScreen() {
   const currentUserId = session?.user.id ?? '';
 
   const { circle, members } = useCircle();
+
+  const headerInitial = useMemo(() => {
+    const m = members.find((mem) => mem.user_id === currentUserId);
+    return m?.displayName.charAt(0).toUpperCase() ?? '?';
+  }, [members, currentUserId]);
   const { appointments, refresh: refreshAppts } = useAppointmentList(circle?.id ?? null);
+  const { projects } = useProjectList(circle?.id ?? null);
+
+  const projectMap = useMemo(() => {
+    const map = new Map<string, string>();
+    projects.forEach((p) => map.set(p.id, p.title));
+    return map;
+  }, [projects]);
   const { sections: taskSections, refresh: refreshTasks } = useTaskList(
     circle?.id ?? null, 'all', currentUserId,
   );
@@ -133,6 +146,7 @@ export function CalendarScreen() {
   function renderItem({ item }: { item: CalendarItem }) {
     if (item.kind === 'appointment') {
       const appt = item.data;
+      const projectName = appt.project_id ? projectMap.get(appt.project_id) : null;
       return (
         <TouchableOpacity
           style={styles.row}
@@ -143,6 +157,16 @@ export function CalendarScreen() {
           <View style={styles.rowContent}>
             <Text style={styles.rowTitle}>{appt.title}</Text>
             <Text style={styles.rowMeta}>{formatApptTime(appt)}</Text>
+            {projectName && (
+              <TouchableOpacity
+                style={styles.projectTag}
+                onPress={() => appt.project_id && navigation.navigate('ProjectDetail', { projectId: appt.project_id! })}
+                hitSlop={4}
+              >
+                <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
+                <Text style={styles.projectTagText}>{projectName}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
         </TouchableOpacity>
@@ -151,6 +175,7 @@ export function CalendarScreen() {
 
     const task = item.data;
     const name = memberName(task.assignee);
+    const projectName = task.project_id ? projectMap.get(task.project_id) : null;
     return (
       <TouchableOpacity
         style={styles.row}
@@ -161,6 +186,16 @@ export function CalendarScreen() {
         <View style={styles.rowContent}>
           <Text style={styles.rowTitle}>{task.title}</Text>
           {name && <Text style={styles.rowMeta}>{name}</Text>}
+          {projectName && (
+            <TouchableOpacity
+              style={styles.projectTag}
+              onPress={() => task.project_id && navigation.navigate('ProjectDetail', { projectId: task.project_id! })}
+              hitSlop={4}
+            >
+              <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
+              <Text style={styles.projectTagText}>{projectName}</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
       </TouchableOpacity>
@@ -174,6 +209,13 @@ export function CalendarScreen() {
           <Text style={styles.circleName}>{circle?.name ?? 'Care Circle'}</Text>
           <Text style={styles.screenTitle}>Calendar</Text>
         </View>
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => navigation.navigate('UserSettings')}
+          hitSlop={8}
+        >
+          <Text style={styles.avatarText}>{headerInitial}</Text>
+        </TouchableOpacity>
       </View>
 
       <Calendar
@@ -347,5 +389,36 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.body,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textMuted,
+  },
+  projectTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.sageTint,
+    borderRadius: theme.borderRadius.badge,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    marginTop: theme.spacing.xs,
+  },
+  projectTagText: {
+    fontSize: theme.fontSize.micro,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.sageTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.sageDark,
   },
 });
