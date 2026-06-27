@@ -6,122 +6,97 @@
 
 ## Current Status
 
-Settings screens are complete. A third "Settings" tab is live in the bottom nav. The Realtime subscription bug that was noted last session was already fixed (useRef pattern was already in place in both hooks).
-
-**Testing checklist from last session is still pending** — work through it before building anything new.
+Calendar week start fixed to Monday. Overview "This week" bucket now ends on the actual Sunday of the current Mon–Sun week. Full design for the Projects feature is complete and documented at `docs/design-projects.md`. Implementation is the next task.
 
 ---
 
-## What was done this session (2026-06-25) — Settings Screens
+## What was done this session (2026-06-27)
 
-### New files created
-
-- `src/hooks/useProfile.ts` — fetches `user_profile` row for the current user; exposes `profile`, `loading`, `error`, `reload`
-- `src/screens/settings/UserSettingsScreen.tsx` — full implementation (was a stub)
-- `src/screens/settings/CircleAdminScreen.tsx` — full implementation (was a stub)
-
-### Modified files
-
-- `src/contexts/AuthContext.tsx` — added `signOut` to context value (delegates to `services/auth.ts`)
-- `src/navigation/types.ts` — added `Settings` to `BottomTabParamList`; removed `UserSettings` from `AppStackParamList` (now a tab, not a push screen)
-- `src/navigation/AppNavigator.tsx` — added Settings tab (settings-outline icon); removed `UserSettings` stack screen
-
-### Feature detail
-
-#### UserSettingsScreen
-
-- Shows display name with tap-to-edit (inline TextInput with save / cancel)
-- Shows email (read-only, from session)
-- Google Calendar sync toggle — disabled, shows "Coming soon"
-- "Circle settings" row — only visible if user is admin role; navigates to CircleAdmin
-- Sign out button with confirmation alert
-
-#### CircleAdminScreen
-
-- Shows circle name as screen title
-- Members list with initials avatars (sage bg for self, sageTint for others), name, role badge
-- "Manage invites" row → navigates to InviteManagement (existing screen)
-- Back button → Settings tab
+- Fixed `CalendarScreen` to start weeks on Monday (`firstDay={1}` on react-native-calendars)
+- Fixed `overviewGrouping` "This week" bucket to end on the Sunday of the current Mon–Sun week (was a rolling +6 days)
+- Removed pre-existing `appt.assignee` TypeScript error from CalendarScreen (Appointment uses invitees join table, not a single assignee field)
+- Committed all accumulated work from the previous session (Overview screen, appointment invitees, full task editing)
+- Designed the Projects feature in full — decisions documented in `docs/design-projects.md`
 
 ---
 
-## Testing checklist
+## Testing checklist (still pending from 2026-06-25 session)
 
-Work through this before building anything new:
-
-### Task flow
+Work through this before building anything new if possible:
 
 - [ ] Create a task (title only) → appears in list
 - [ ] Create a task with repeat, assignee, due date, Only me → fields shown correctly
 - [ ] Tap task → detail screen loads all fields
 - [ ] Edit assignee, repeat, date, visibility in detail → persists after leaving and returning
-- [ ] Add/edit progress note → saves
 - [ ] Complete task (checkbox) → removed from list
 - [ ] Delete task → removed from list
-- [ ] Mine filter → shows only tasks assigned to you
-
-### Appointment flow
-
-- [ ] Calendar tab shows empty state
-- [ ] Tap + in Calendar → add appointment sheet; date chips show correct dates
-- [ ] Select date + time + optional duration/assignee → Add appointment → navigates to detail
+- [ ] Calendar shows Monday as first day of week
 - [ ] Appointment appears in Calendar tab on correct date
-- [ ] "Make an appointment" from task detail → title pre-filled
 - [ ] Add prep task from appointment detail → task appears in checklist
-- [ ] Complete a prep task → checkbox fills, count updates
-- [ ] Delete appointment → gone from calendar
-
-### Settings flow
-
-- [ ] Settings tab appears in bottom nav
-- [ ] Display name shown correctly
-- [ ] Tap name → editable; save persists; cancel reverts
-- [ ] Email shown correctly (read-only)
-- [ ] Google Calendar toggle is disabled with "Coming soon"
-- [ ] Admin user sees "Circle settings" row; member does not
-- [ ] Circle settings → members list shows correct names and roles
-- [ ] Manage invites → existing invite screen
-- [ ] Sign out → confirmation alert → signs out
+- [ ] Settings tab → navigates correctly via avatar
 
 ---
 
-## Next steps
+## Implementation Plan: Projects Feature
 
-### Step 8 — Push notifications (basic)
+At the start of the implementation session, convert the checklist to todos and mark each item done as you complete it.
 
-- Register push token on login → save to `user_profile.push_token`
-- Send notification when a task is assigned to you (Supabase Edge Function or client-side trigger)
+Read `docs/design-projects.md` before starting — it has the full data model, status lifecycle, and UI spec.
 
-### Step 9 — Daily digest modal
+### Phase 1 — Data layer
 
-- `DailyDigestScreen` stub already exists
-- Show on first app open of the day if there are tasks/appointments upcoming
-- Gate with `last_digest_shown_at` on `user_profile`
+- [ ] Write migration: create `projects` table with all fields (id, title, description, owner, due_date, status enum, visibility, circle_id, created_by, created_at)
+- [ ] Write migration: add `project_status` enum (`not_started`, `in_progress`, `done`) if not already in schema
+- [ ] Write migration: add `project_id` FK (nullable) to `tasks` table
+- [ ] Write migration: add `project_id` FK (nullable) to `appointments` table
+- [ ] Run migrations against linked Supabase project
+- [ ] Regenerate TypeScript types: `supabase gen types typescript --linked > src/types/database.ts`
+- [ ] Create `services/projects.ts` — CRUD: getProjectsForCircle, getProject (with children), createProject, updateProject, deleteProject
+- [ ] Create `hooks/useProjectList.ts` — list of projects for circle with realtime subscription
+- [ ] Create `hooks/useProject.ts` — single project with child tasks and appointments
+
+### Phase 2 — Project screens
+
+- [ ] Add navigation types for ProjectsList, ProjectDetail, AddProject to `navigation/types.ts`
+- [ ] Create `screens/app/ProjectsScreen.tsx` — list of projects grouped by status (active first, done below); each row shows title, status badge, due date, child count
+- [ ] Create `screens/app/ProjectDetailScreen.tsx` — two tabs (Active / Past); each tab shows interleaved child tasks and appointments; "+" FAB to add task or appointment
+- [ ] Create `screens/app/AddProjectScreen.tsx` — form: title (required), description, owner picker, due date (optional), visibility
+
+### Phase 3 — Navigation changes
+
+- [ ] Update `AppNavigator` — remove Settings tab from bottom nav; add Projects tab; wire up ProjectsScreen
+- [ ] Add user avatar (→ Settings) to CalendarScreen header (same pattern as Overview)
+- [ ] Add user avatar (→ Settings) to ProjectsScreen header
+- [ ] Add ProjectDetail, AddProject as stack screens in AppNavigator
+
+### Phase 4 — Linking projects from tasks and appointments
+
+- [ ] Update `AddTaskScreen` — add optional "Link to project" picker field
+- [ ] Update `AddAppointmentScreen` — add optional "Link to project" picker field
+- [ ] Update `TaskDetailScreen` — add project link row (shows linked project name, tappable to navigate; allow unlinking)
+- [ ] Update `AppointmentDetailScreen` — same project link row
+
+### Phase 5 — Overview and Calendar tags
+
+- [ ] Update `OverviewItemRow` — show project name tag below title when `project_id` is set; tag navigates to ProjectDetail
+- [ ] Update `OverviewItemRow` — add "..." button to right of row; action sheet: "Add to project" / "Remove from project", "Delete" (checkbox stays for quick-complete)
+- [ ] Update `CalendarScreen` agenda items — show project name tag when item has a project
+
+### Phase 6 — Status auto-transitions
+
+- [ ] In `useProject` / project service: when a child task is marked complete and project is `not_started`, auto-update status to `in_progress`
+- [ ] In `useProject`: when viewing a project, check if any child appointment date has passed — if so and status is `not_started`, update to `in_progress`
+- [ ] When all children are completed/past and project is `in_progress`, prompt user to mark project done (Alert with confirm/cancel)
 
 ---
 
 ## Open items
 
 - Testing checklist above not yet verified against running app
-- Google OAuth client ID not yet configured (Calendar sync — defer until after push notifications)
+- Google OAuth client ID not yet configured (Calendar sync — defer)
 - Apple Developer account deferred (EAS Build post-MVP)
-- Appointment editing (changing date/time/assignee after creation) not yet built
-
----
-
-## Deferred documentation task — Email auth setup guide
-
-Collect lessons learned from all chat sessions where we worked on email auth (Supabase + Resend + magic link + OTP + custom domain) and produce a guide at `docs/technical/email-auth-setup-guide.md`.
-
-The info is scattered across multiple chat sessions. Key topics to consolidate:
-
-- Resend SMTP setup and connecting it to Supabase
-- Supabase Auth email templates (each type: confirm signup, magic link, OTP, invite) — which variables go in each (`{{ .Token }}`, `{{ .ConfirmationURL }}`)
-- Supabase Auth Hooks (Send Email hook) — event types, how the hook payload works, which Resend template is called per event
-- Custom domain setup in Supabase + Namecheap DNS records (TXT + CNAME) — the "all records missing" gotcha
-- The distinction between the login OTP email and the "confirm your email address" signup email — they go through different paths and need separate templates
-- Propagation delay gotcha (wait before restarting verification in Supabase)
-- Testing: how to verify each email type is working end-to-end
+- Appointment editing (changing date/time after creation) not yet built
+- Email auth setup guide — collect lessons from past sessions into `docs/technical/email-auth-setup-guide.md` (deferred)
 
 ---
 
@@ -134,7 +109,7 @@ GitHub: `ofereisenberg/Caregiver-app`
 
 ## Dev build notes
 
-See `docs/technical/05-android-dev-build-setup.md` for the full Android setup guide including all Windows-specific fixes.
+See `docs/technical/05-android-dev-build-setup.md` for the full Android setup guide.
 
 Working build command (run in PowerShell from project root):
 
@@ -147,9 +122,7 @@ npx expo run:android
 
 After every `npm install`, re-apply the Foojay plugin comment in `node_modules/@react-native/gradle-plugin/settings.gradle.kts` (see guide Step 3).
 
-**expo-av was removed (2026-06-26)** — it caused a `LazyKType` runtime crash due to a version incompatibility with expo-modules-core 56.0.17. It was not yet used anywhere in the app. Re-install it (`npm install expo-av`) when building the voice input feature (Step 11), and follow the guidance in the setup guide under "LazyKType runtime crash".
-
-### Other testing notes
+**expo-av was removed (2026-06-26)** — LazyKType runtime crash. Re-install when building voice input (Step 11).
 
 - Press `r` in Expo terminal to force full reload when hot reload misses changes.
 - OTP is 8 digits.
