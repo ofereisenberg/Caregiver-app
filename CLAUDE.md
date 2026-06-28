@@ -14,7 +14,14 @@ At the start of every session, read these two files before doing anything else:
 1. `docs/project-context.md` — what the app is, tech stack, folder layout, data model, conventions
 2. `docs/next_session.md` — current status, what was done last session, what's next
 
-At the end of every session, overwrite `docs/next_session.md` with current status, what was done, and what's next. Do not append — replace.
+At the end of every session:
+
+1. Ask the user: **"Anything to document as a lesson learned this session?"** before committing.
+   - Project-specific discoveries (build quirks, dependency issues, this stack's gotchas) → `docs/technical/lessons-this-project.md`
+   - General patterns applicable to future apps → `docs/general-lessons.md`
+   - Both files are append-only — never delete entries, always add under the relevant theme section.
+
+2. Overwrite `docs/next_session.md` with current status, what was done, and what's next. Do not append — replace.
 
 ---
 

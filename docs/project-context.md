@@ -120,15 +120,39 @@ npx expo run:android
 
 ---
 
-## 6. Active Design Docs
+## 6. Documentation Structure
+
+### Product docs (`docs/product/`)
 
 | Doc | Topic |
 |---|---|
-| [docs/product/01-situation-and-problem-space.md](product/01-situation-and-problem-space.md) | Background, user problem, Germany context, open questions |
-| [docs/product/02-interview-research-log.md](product/02-interview-research-log.md) | Pain points, MVP scoring, stakeholder map |
-| [docs/product/03-mvp-handoff-for-design](product/03-mvp-handoff-for-design) | Screen list, data model for wireframes, design tone |
-| [docs/technical/04-technical-decisions-and-constraints.md](technical/04-technical-decisions-and-constraints.md) | All resolved tech decisions: auth, data model, Google Calendar, notifications, voice input, offline |
-| [docs/technical/05-android-dev-build-setup.md](technical/05-android-dev-build-setup.md) | Android dev build setup for Windows — JDK setup, Foojay fix, device targeting, known errors |
+| [01-situation-and-problem-space.md](product/01-situation-and-problem-space.md) | Background, user problem, Germany context, open questions |
+| [02-interview-research-log.md](product/02-interview-research-log.md) | Pain points, MVP scoring, stakeholder map |
+| [03-mvp-handoff-for-design](product/03-mvp-handoff-for-design) | Screen list, data model for wireframes, design tone |
+
+### Technical docs (`docs/technical/`)
+
+| Doc | Topic |
+|---|---|
+| [04-technical-decisions-and-constraints.md](technical/04-technical-decisions-and-constraints.md) | All resolved tech decisions: auth, data model, Google Calendar, notifications, voice input, offline |
+| [05-android-dev-build-setup.md](technical/05-android-dev-build-setup.md) | Android dev build setup for Windows — JDK setup, Foojay fix, device targeting, known errors |
+| [lessons-this-project.md](technical/lessons-this-project.md) | Project-specific gotchas and non-obvious fixes discovered during development |
+
+### Root-level docs
+
+| Doc | Topic |
+|---|---|
+| [docs/general-lessons.md](general-lessons.md) | Reusable patterns and pitfalls for any future Expo / React Native / Windows project |
+| [docs/next_session.md](next_session.md) | Session handoff — current status, what was done, what's next (overwritten each session) |
+
+### Lesson capture convention
+
+At the end of each session, before committing, log any surprises or non-obvious discoveries:
+
+- **Project-specific** (this stack, this codebase) → `docs/technical/lessons-this-project.md`
+- **General** (any future app) → `docs/general-lessons.md`
+
+Both files are organized by theme and are append-only.
 
 ---
 
