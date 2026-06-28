@@ -1,0 +1,98 @@
+# build-release.ps1 — builds a release APK for Android sideloading
+# Usage: .\build-release.ps1  or  npm run build:android  or  buildandroid.bat
+
+$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location $ProjectRoot
+
+# ── Read current versions ────────────────────────────────────────────────────
+
+$AppJsonContent = Get-Content "$ProjectRoot\app.json" -Raw
+if ($AppJsonContent -match '"version":\s*"([^"]+)"') {
+    $CurrentVersion = $matches[1]
+} else {
+    Write-Host "ERROR: Could not read version from app.json" -ForegroundColor Red
+    exit 1
+}
+
+$BuildGradleContent = Get-Content "$ProjectRoot\android\app\build.gradle" -Raw
+if ($BuildGradleContent -match 'versionCode\s+(\d+)') {
+    $CurrentVersionCode = [int]$matches[1]
+} else {
+    Write-Host "ERROR: Could not read versionCode from build.gradle" -ForegroundColor Red
+    exit 1
+}
+
+# ── Prompt for new version ───────────────────────────────────────────────────
+
+Write-Host ""
+Write-Host "================================================"
+Write-Host "  Caregiver App — Android Release Builder"
+Write-Host "================================================"
+Write-Host ""
+Write-Host "  Current version : $CurrentVersion  (versionCode $CurrentVersionCode)"
+Write-Host ""
+$NewVersion = Read-Host "  New version number [Enter to keep $CurrentVersion]"
+if ([string]::IsNullOrWhiteSpace($NewVersion)) {
+    $NewVersion = $CurrentVersion
+}
+$NewVersionCode = $CurrentVersionCode + 1
+
+Write-Host ""
+Write-Host "  Building v$NewVersion (versionCode $NewVersionCode) ..."
+Write-Host ""
+
+# ── Update version numbers in source files ───────────────────────────────────
+
+$AppJsonContent = $AppJsonContent -replace '"version":\s*"[^"]*"', "`"version`": `"$NewVersion`""
+Set-Content "$ProjectRoot\app.json" $AppJsonContent -Encoding UTF8
+
+$BuildGradleContent = $BuildGradleContent -replace 'versionCode\s+\d+', "versionCode $NewVersionCode"
+$BuildGradleContent = $BuildGradleContent -replace 'versionName\s+"[^"]*"', "versionName `"$NewVersion`""
+Set-Content "$ProjectRoot\android\app\build.gradle" $BuildGradleContent -Encoding UTF8
+
+# ── Delete cached JS bundles so Gradle re-bundles from source ────────────────
+
+Get-ChildItem -Path "$ProjectRoot\android" -Recurse -Filter "*.bundle" -ErrorAction SilentlyContinue | Remove-Item -Force
+
+# ── Build ────────────────────────────────────────────────────────────────────
+
+$env:JAVA_HOME  = "C:\Users\ofere\AppData\Local\Programs\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+$env:ANDROID_HOME = "C:\Users\ofere\AppData\Local\Android\Sdk"
+
+Set-Location "$ProjectRoot\android"
+.\gradlew assembleRelease
+$BuildExitCode = $LASTEXITCODE
+Set-Location $ProjectRoot
+
+if ($BuildExitCode -ne 0) {
+    Write-Host ""
+    Write-Host "  BUILD FAILED — check the output above for errors." -ForegroundColor Red
+    Write-Host "  Version numbers have been updated but no APK was produced."
+    Write-Host ""
+    Read-Host "  Press Enter to close"
+    exit 1
+}
+
+# ── Copy APK to releases folder ──────────────────────────────────────────────
+
+$ReleasesDir = "$ProjectRoot\releases\v$NewVersion"
+New-Item -ItemType Directory -Force -Path $ReleasesDir | Out-Null
+
+$ApkSource = "$ProjectRoot\android\app\build\outputs\apk\release\app-release.apk"
+$ApkDest   = "$ReleasesDir\caregiver-app-v$NewVersion.apk"
+Copy-Item $ApkSource $ApkDest
+
+# ── Done ─────────────────────────────────────────────────────────────────────
+
+Write-Host ""
+Write-Host "================================================" -ForegroundColor Green
+Write-Host "  Build complete!" -ForegroundColor Green
+Write-Host "================================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "  APK: $ApkDest"
+Write-Host ""
+Write-Host "  Next steps:"
+Write-Host "    1. Upload the APK to Google Drive > Caregiver App > v$NewVersion"
+Write-Host "    2. Share the file with family members to install"
+Write-Host ""
+Read-Host "  Press Enter to close"

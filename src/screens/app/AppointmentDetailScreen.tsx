@@ -121,6 +121,9 @@ export function AppointmentDetailScreen() {
         <Text style={styles.dateText}>
           {formatWhen(appointment.starts_at, appointment.ends_at, appointment.is_full_day)}
         </Text>
+        {appointment.details ? (
+          <Text style={styles.detailsText}>{appointment.details}</Text>
+        ) : null}
 
         <View style={styles.fieldCard}>
           <View style={styles.fieldRow}>
@@ -218,17 +221,24 @@ export function AppointmentDetailScreen() {
 
         <View style={styles.prepCard}>
           {prepTasks.map((task) => (
-            <View key={task.id} style={styles.prepRow}>
+            <TouchableOpacity
+              key={task.id}
+              style={styles.prepRow}
+              onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+              activeOpacity={0.7}
+            >
               <TouchableOpacity
                 style={[styles.prepCheckbox, task.completed && styles.prepCheckboxDone]}
                 onPress={() => !task.completed && handleCompletePrep(task.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 {task.completed && <Ionicons name="checkmark" size={14} color={theme.colors.surface} />}
               </TouchableOpacity>
               <Text style={[styles.prepTitle, task.completed && styles.prepTitleDone]}>
                 {task.title}
               </Text>
-            </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
+            </TouchableOpacity>
           ))}
           <TouchableOpacity
             style={styles.addPrepRow}
@@ -258,7 +268,8 @@ const styles = StyleSheet.create({
   titleArea: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
   apptIcon: { width: 32, height: 32, borderRadius: theme.borderRadius.badge, backgroundColor: theme.colors.sageTint, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
   title: { flex: 1, fontSize: theme.fontSize.subhead, fontFamily: theme.fontFamily.sansBold, fontWeight: theme.fontWeight.bold, color: theme.colors.textPrimary, lineHeight: 26 },
-  dateText: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansMedium, fontWeight: theme.fontWeight.medium, color: theme.colors.textSecondary, marginLeft: 44, marginBottom: theme.spacing.xl },
+  dateText: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansMedium, fontWeight: theme.fontWeight.medium, color: theme.colors.textSecondary, marginLeft: 44, marginBottom: theme.spacing.md },
+  detailsText: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.textSecondary, marginLeft: 44, marginBottom: theme.spacing.xl, lineHeight: 22 },
   durationText: { fontFamily: theme.fontFamily.sans, fontWeight: theme.fontWeight.regular, color: theme.colors.textMuted },
   fieldCard: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.card, marginBottom: theme.spacing.xl, overflow: 'hidden' },
   fieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md + 2 },

@@ -65,6 +65,7 @@ export function AddAppointmentScreen() {
   const isEditMode = !!appointmentId;
 
   const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
   const [sourceTaskTitle, setSourceTaskTitle] = useState<string | null>(null);
   const [isFullDay, setIsFullDay] = useState(false);
   const [startDate, setStartDate] = useState<Date>(() => getInitialStart(dateParam));
@@ -101,6 +102,7 @@ export function AddAppointmentScreen() {
     getAppointment(appointmentId).then(({ data }) => {
       if (!data) return;
       setTitle(data.title);
+      setDetails(data.details ?? '');
       setIsFullDay(data.is_full_day);
       setStartDate(new Date(data.starts_at));
       if (data.ends_at) setEndDate(new Date(data.ends_at));
@@ -185,6 +187,7 @@ export function AddAppointmentScreen() {
     if (isEditMode && appointmentId) {
       const { error: updateError } = await updateAppointment(appointmentId, {
         title: title.trim(),
+        details: details.trim() || null,
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
         is_full_day: isFullDay,
@@ -201,6 +204,7 @@ export function AddAppointmentScreen() {
     } else {
       const { data: appt, error: createError } = await createAppointment({
         title: title.trim(),
+        details: details.trim() || null,
         circle_id: circle.id,
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
@@ -217,7 +221,7 @@ export function AddAppointmentScreen() {
         navigation.replace('AppointmentDetail', { appointmentId: appt.id });
       }
     }
-  }, [title, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, circle, session, navigation, isEditMode, appointmentId]);
+  }, [title, details, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, circle, session, navigation, isEditMode, appointmentId]);
 
   const canAdd = title.trim().length > 0 && (isFullDay || endDate > startDate) && !saving;
 
@@ -256,8 +260,19 @@ export function AddAppointmentScreen() {
           value={title}
           onChangeText={setTitle}
           autoFocus={!taskId}
-          returnKeyType="done"
+          returnKeyType="next"
           multiline={false}
+        />
+        <View style={styles.inputDivider} />
+        <TextInput
+          style={styles.detailsInput}
+          placeholder="Notes"
+          placeholderTextColor={theme.colors.textFaint}
+          value={details}
+          onChangeText={setDetails}
+          multiline
+          returnKeyType="default"
+          textAlignVertical="top"
         />
         <View style={styles.inputDivider} />
 
@@ -518,6 +533,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textPrimary,
     paddingVertical: theme.spacing.sm,
+  },
+  detailsInput: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+    paddingVertical: theme.spacing.sm,
+    minHeight: 60,
   },
   inputDivider: {
     height: 1,

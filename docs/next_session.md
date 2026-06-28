@@ -6,95 +6,96 @@
 
 ## Current Status
 
-Projects feature fully implemented and tested. All core interactions work: project CRUD, task/appointment linking, Overview "..." context menus, Calendar project tags, task uncheck/re-open from both Overview Done tab and Project Past tab, safe-area-aware delete button, and three-option delete dialog.
+Project Notes feature complete. Release APK build infrastructure in place — app successfully sideloaded and running on a second device. All core features are done.
 
 ---
 
-## What was done this session (2026-06-27)
+## What was done this session (2026-06-28)
 
-### Projects feature — full implementation (phases 1–6)
+### Project Notes feature
 
-**Phase 1 — Data layer**
-- Migration `20260627120000_projects.sql`: `project_status` enum, `projects` table, `project_id` FK (nullable, ON DELETE SET NULL) on tasks and appointments, RLS policies, Realtime
-- Regenerated `src/types/database.ts` (UTF-8)
-- `services/projects.ts` — full CRUD + `deleteProjectAndItems`
-- `hooks/useProjectList.ts` — project list with Realtime
-- `hooks/useProject.ts` — single project with children, Realtime, task completion, status auto-transitions
+**Migration `20260628000000_project_notes.sql`**
 
-**Phase 2 — Project screens**
-- `screens/app/ProjectsScreen.tsx` — list grouped Active/Done, FAB → AddProject, avatar → Settings
-- `screens/app/ProjectDetailScreen.tsx` — Active/Past tabs, child rows, Mark done, FAB row, Delete
-- `screens/app/AddProjectScreen.tsx` — modal form: title, description, owner, due date, visibility
+- New `project_notes` table: `id`, `project_id`, `circle_id`, `content`, `created_by`, `created_at`
+- RLS: circle members can read and insert; authors can delete their own notes
+- Applied via `supabase db push` — live in production
+- TypeScript types regenerated via `supabase gen types typescript --linked`
 
-**Phase 3 — Navigation**
-- Removed Settings bottom tab; added Projects tab (folder icon)
-- Added `ProjectDetail`, `AddProject`, `UserSettings` as stack screens
-- Avatar → `UserSettings` added to all three tab headers
+**`src/services/projectNotes.ts`** — new file
 
-**Phase 4 — Linking from forms**
-- `AddTaskScreen` / `AddAppointmentScreen`: project picker row, pre-seeded from route params
-- `TaskDetailScreen` / `AppointmentDetailScreen`: project field row with chip picker + "View project" link
+- `getProjectNotes(projectId)` — fetches all notes for a project, newest first
+- `addProjectNote(projectId, circleId, content, createdBy)`
+- `deleteProjectNote(noteId)`
 
-**Phase 5 — Overview and Calendar project tags**
-- `OverviewItemRow`: project tag (folder icon + name, sage tint), "..." menu button
-- `TaskListScreen`: `buildMenuItems()` builds context menu items per row
-- `CalendarScreen`: project tag on agenda rows
+**`src/hooks/useProjectNotes.ts`** — new file
 
-**Phase 6 — Status auto-transitions**
-- `useProject`: `not_started → in_progress` on first task complete or past appointment; prompt when all done
+- `notes`, `loading`, `error`, `refresh`, `addNote`, `removeNote`
+- Realtime subscription on `project_notes` filtered by `project_id`
+- Optimistic delete (removes from local state, reverts on DB error)
 
-### Polish and bug fixes (same session)
+**`src/screens/app/ProjectDetailScreen.tsx`**
 
-**"..." context menu — replaced Alert/ActionSheet with inline dropdown**
-- Installed `react-native-popup-menu` (pure JS, no rebuild required)
-- Added `MenuProvider` to `App.tsx` root
-- `OverviewItemRow`: uses `Menu / MenuTrigger / MenuOptions` from library; prop changed from `onMenuPress(anchor)` to `menuItems: DropdownMenuItem[]`
-- `TaskListScreen`: `buildMenuItems(item)` returns items array; removed all anchor/coordinate/Modal state
+- Notes tab (between Active and Past), with note count badge
+- FlatList of notes + compose row (TextInput + send icon)
+- Note rows: author avatar (initial), author name, timestamp, content
+- Long-press on own note → delete confirmation alert
 
-**ProjectDetailScreen — safe area fix**
-- `useSafeAreaInsets` applied to delete row and FAB row — no longer overlaps Android nav buttons
+### Release APK build infrastructure
 
-**Task uncheck / re-open**
-- `uncompleteTask(id)` added to `services/tasks.ts` — sets `completed: false, completed_at: null`
-- `OverviewItemRow`: `onUncheck` prop; completed checkbox tappable when provided
-- `TaskListScreen`: `onUncheck` passed only on `filter === 'done'`; shows "Re-open task?" Alert
-- `ProjectDetailScreen` Past tab: calls `handleUncompleteTask`; reverts project `done → in_progress` when a task is re-opened inside a completed project
+**Bug fix — `src/constants/config.ts`**
 
-**Delete project — three-option dialog**
-- `deleteProjectAndItems(id)`: deletes linked tasks/appointments first (parallel), then project
-- Alert: Cancel / Keep items / Delete all (destructive)
+- `requireEnv(key)` used dynamic `process.env[key]` access, which Expo's Babel transform cannot substitute at bundle time (it only substitutes static `process.env.LITERAL_KEY` references)
+- Fixed to pass the already-accessed value: `requireEnv(process.env.EXPO_PUBLIC_SUPABASE_URL, 'EXPO_PUBLIC_SUPABASE_URL')`
 
----
+**`build-release.ps1`** — new file
 
-## Testing checklist
+- Prompts for version number (Enter = keep current)
+- Auto-increments `versionCode` in `build.gradle`
+- Updates `version` in `app.json` and `versionName` in `build.gradle`
+- Deletes cached bundles to force fresh JS bundling
+- Builds release APK
+- Copies to `releases/v{version}/caregiver-app-v{version}.apk`
 
-- [ ] "..." on Overview row → inline dropdown appears below button
-- [ ] Add to project / Remove from project / Delete from dropdown
-- [ ] Done tab checkbox → "Re-open task?" → task moves to Open tab
-- [ ] Project Past tab checkbox → "Re-open task?" → task moves to Active tab; done project reverts to in_progress
-- [ ] Delete project "Keep items" → tasks/appointments survive unlinked
-- [ ] Delete project "Delete all" → tasks and appointments also removed
-- [ ] ProjectDetailScreen delete button clears Android nav bar
-- [ ] Create project → appears in Projects tab
-- [ ] Open project detail → Active/Past tabs work
-- [ ] Add task from project detail → task appears with project linked
-- [ ] Complete task in project → status auto-transitions to in_progress
-- [ ] Mark project done manually
-- [ ] Link task to project from AddTask / TaskDetail
-- [ ] Project tag appears on Overview items and Calendar
-- [ ] Settings accessible via avatar from all three tabs
-- [ ] Calendar shows Monday as first day of week
-- [ ] Appointment appears in Calendar tab on correct date
+**`buildandroid.bat`** — new file
+
+- Double-click launcher for `build-release.ps1`
+
+**`package.json`**
+
+- Added `build:android` npm script → `npm run build:android`
+
+**`.gitignore`**
+
+- Added `releases/` (APK files should not be committed)
 
 ---
 
-## Open items
+## Open Issues
 
-- Pre-existing TS errors: DateTimePicker `onChange` signature in AddTaskScreen, AddAppointmentScreen, TaskDetailScreen; `StyleSheet.absoluteFillObject` in TaskListScreen fabBackdrop — none blocking
-- Google OAuth client ID not yet configured (Calendar sync — defer)
-- Apple Developer account deferred (EAS Build post-MVP)
-- Appointment editing (changing date/time after creation) partially built
-- Email auth setup guide deferred
+| #  | Description                                                    |
+|----|----------------------------------------------------------------|
+| 10 | Repeating tasks don't appear in calendar for future instances  |
+
+---
+
+## Features — priority order
+
+### High
+
+- F1 — Push notifications (register token on login, notify on task assignment)
+- F2 — Daily digest modal (first app open of the day)
+
+### Medium
+
+- F9 — i18n (German/English, i18next)
+
+### Low
+
+- F5 — Google Calendar sync
+- F6 — Voice input (Whisper + Claude Haiku)
+- F7 — Maps link detection in location field
+- F8 — Multiple invitees (join table)
+- F11 — Full-text search
 
 ---
 
@@ -109,7 +110,7 @@ GitHub: `ofereisenberg/Caregiver-app`
 
 See `docs/technical/05-android-dev-build-setup.md` for the full Android setup guide.
 
-Working build command (run in PowerShell from project root):
+**Dev build** (run in PowerShell from project root):
 
 ```powershell
 $env:ANDROID_SERIAL = "R58M53P4QDM"
@@ -118,9 +119,19 @@ $env:ANDROID_HOME = "C:\Users\ofere\AppData\Local\Android\Sdk"
 npx expo run:android
 ```
 
+**Release APK for sideloading** — run the build script (handles everything):
+
+```powershell
+.\build-release.ps1       # from terminal
+npm run build:android     # alternative
+buildandroid.bat          # double-click in Explorer
+```
+
+Output goes to `releases/v{version}/caregiver-app-v{version}.apk`. Upload that file to Google Drive.
+
 After every `npm install`, re-apply the Foojay plugin comment in `node_modules/@react-native/gradle-plugin/settings.gradle.kts` (see guide Step 3).
 
-**expo-av was removed (2026-06-26)** — LazyKType runtime crash. Re-install when building voice input (Step 11).
+**expo-av was removed (2026-06-26)** — LazyKType runtime crash. Re-install when building voice input (F6).
 
 - Press `r` in Expo terminal to force full reload when hot reload misses changes.
 - OTP is 8 digits.

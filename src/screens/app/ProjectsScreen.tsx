@@ -19,6 +19,7 @@ import { Project } from '../../services/projects';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
+type ActiveTab = 'active' | 'done';
 
 const STATUS_LABEL: Record<string, string> = {
   not_started: 'Not started',
@@ -34,7 +35,7 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
 
 function formatDueDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
@@ -80,6 +81,7 @@ export function ProjectsScreen() {
   const { circle, members, loading: circleLoading } = useCircle();
 
   const { projects, loading: dataLoading, refresh } = useProjectList(circle?.id ?? null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('active');
 
   useFocusEffect(
     useCallback(() => {
@@ -95,6 +97,7 @@ export function ProjectsScreen() {
 
   const activeProjects = projects.filter((p) => p.status !== 'done');
   const doneProjects = projects.filter((p) => p.status === 'done');
+  const visibleProjects = activeTab === 'active' ? activeProjects : doneProjects;
 
   const isLoading = circleLoading || (dataLoading && projects.length === 0);
 
@@ -112,47 +115,54 @@ export function ProjectsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Tabs */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+          onPress={() => setActiveTab('active')}
+        >
+          <Text style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
+            Active{activeProjects.length > 0 ? ` (${activeProjects.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'done' && styles.tabActive]}
+          onPress={() => setActiveTab('done')}
+        >
+          <Text style={[styles.tabLabel, activeTab === 'done' && styles.tabLabelActive]}>
+            Completed{doneProjects.length > 0 ? ` (${doneProjects.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.sage} />
         </View>
-      ) : projects.length === 0 ? (
+      ) : visibleProjects.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="folder-outline" size={48} color={theme.colors.textFaint} />
-          <Text style={styles.emptyTitle}>No projects yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Projects help you group related tasks and appointments into one place.
+          <Text style={styles.emptyTitle}>
+            {activeTab === 'active' ? 'No active projects' : 'No completed projects'}
           </Text>
+          {activeTab === 'active' && (
+            <Text style={styles.emptySubtitle}>
+              Projects help you group related tasks and appointments into one place.
+            </Text>
+          )}
         </View>
       ) : (
         <FlatList
-          data={[...activeProjects, ...doneProjects]}
+          data={visibleProjects}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListHeaderComponent={
-            activeProjects.length > 0 && doneProjects.length > 0 ? (
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>Active</Text>
-              </View>
-            ) : null
-          }
-          renderItem={({ item, index }) => {
-            const isDivider = activeProjects.length > 0 && doneProjects.length > 0 && index === activeProjects.length;
-            return (
-              <>
-                {isDivider && (
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>Completed</Text>
-                  </View>
-                )}
-                <ProjectRow
-                  project={item}
-                  onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })}
-                />
-              </>
-            );
-          }}
+          renderItem={({ item }) => (
+            <ProjectRow
+              project={item}
+              onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })}
+            />
+          )}
         />
       )}
 
@@ -199,22 +209,35 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.sageDark,
   },
-  listContent: { paddingBottom: 100 },
-  separator: { height: 1, backgroundColor: theme.colors.divider },
-  sectionHeader: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.canvas,
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+    backgroundColor: theme.colors.surface,
   },
-  sectionHeaderText: {
-    fontSize: theme.fontSize.label,
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: theme.colors.sage,
+  },
+  tabLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textMuted,
+  },
+  tabLabelActive: {
+    color: theme.colors.sage,
     fontFamily: theme.fontFamily.sansSemiBold,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textMuted,
-    letterSpacing: theme.letterSpacing.wide,
-    textTransform: 'uppercase',
   },
+  listContent: { paddingBottom: 100 },
+  separator: { height: 1, backgroundColor: theme.colors.divider },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -16,6 +16,7 @@ interface UseOverviewResult {
 export function useOverview(
   circleId: string | null,
   filter: 'all' | 'mine' | 'done',
+  currentUserId?: string,
 ): UseOverviewResult {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -77,12 +78,10 @@ export function useOverview(
   }, [fetchAll]);
 
   const visibleTasks = filter === 'mine'
-    ? tasks.filter(t => t.visibility === 'private')
+    ? tasks.filter(t => currentUserId ? t.assignee === currentUserId : false)
     : tasks;
 
-  const visibleAppointments = filter === 'mine'
-    ? appointments.filter(a => a.visibility === 'private')
-    : appointments;
+  const visibleAppointments = filter === 'mine' ? [] : appointments;
 
   const sections: OverviewSection[] = filter === 'done'
     ? (visibleTasks.length > 0

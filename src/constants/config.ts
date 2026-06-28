@@ -1,13 +1,12 @@
-function requireEnv(key: string): string {
-  const value = process.env[key];
+function requireEnv(value: string | undefined, key: string): string {
   if (!value) throw new Error(`Missing required environment variable: ${key}`);
   return value;
 }
 
 export const config = {
   supabase: {
-    url: requireEnv('EXPO_PUBLIC_SUPABASE_URL'),
-    anonKey: requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
+    url: requireEnv(process.env.EXPO_PUBLIC_SUPABASE_URL, 'EXPO_PUBLIC_SUPABASE_URL'),
+    anonKey: requireEnv(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'EXPO_PUBLIC_SUPABASE_ANON_KEY'),
   },
   ai: {
     voiceParseModel: process.env.VOICE_PARSE_MODEL ?? 'claude-haiku-4-5',

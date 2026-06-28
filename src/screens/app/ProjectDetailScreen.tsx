@@ -3,8 +3,11 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -14,9 +17,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useProject } from '../../hooks/useProject';
+import { useProjectNotes } from '../../hooks/useProjectNotes';
 import { deleteProject, deleteProjectAndItems, updateProject } from '../../services/projects';
+import { ProjectNote } from '../../services/projectNotes';
 import { uncompleteTask, Task } from '../../services/tasks';
 import { Appointment } from '../../services/appointments';
 import { AppStackParamList } from '../../navigation/types';
@@ -24,7 +30,7 @@ import { AppStackParamList } from '../../navigation/types';
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'ProjectDetail'>;
 
-type ActiveTab = 'active' | 'past';
+type ActiveTab = 'active' | 'notes' | 'past';
 
 const STATUS_LABEL: Record<string, string> = {
   not_started: 'Not started',
@@ -54,8 +60,24 @@ function formatApptTime(appt: Appointment): string {
 
 function formatDue(dateStr: string | null): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+function formatNoteTime(isoStr: string): string {
+  const d = new Date(isoStr);
+  const now = new Date();
+  const isToday =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+  const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (isToday) return `Today · ${timeStr}`;
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (diffDays < 7) {
+    return `${d.toLocaleDateString(undefined, { weekday: 'short' })} · ${timeStr}`;
+  }
+  return `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${timeStr}`;
 }
 
 export function ProjectDetailScreen() {
@@ -63,9 +85,17 @@ export function ProjectDetailScreen() {
   const route = useRoute<Route>();
   const { projectId } = route.params;
 
-  const { members } = useCircle();
+  const { session } = useAuth();
+  const { circle, members } = useCircle();
   const { project, loading, refresh, handleCompleteTask } = useProject(projectId);
+  const { notes, addNote, removeNote } = useProjectNotes(
+    projectId,
+    circle?.id ?? null,
+    session?.user.id ?? null,
+  );
   const [activeTab, setActiveTab] = useState<ActiveTab>('active');
+  const [draftNote, setDraftNote] = useState('');
+  const [submittingNote, setSubmittingNote] = useState(false);
   const insets = useSafeAreaInsets();
 
   useFocusEffect(
@@ -99,9 +129,44 @@ export function ProjectDetailScreen() {
     );
   }
 
-  async function handleMarkDone() {
-    await updateProject(projectId, { status: 'done' });
-    refresh();
+  function handleChangeStatus() {
+    const allStatuses: Array<{ key: string; label: string }> = [
+      { key: 'not_started', label: 'Not started' },
+      { key: 'in_progress', label: 'In progress' },
+      { key: 'done', label: 'Done' },
+    ];
+    const options = allStatuses.filter((s) => s.key !== project?.status);
+    Alert.alert(
+      'Change status',
+      `Current: ${STATUS_LABEL[project?.status ?? ''] ?? project?.status}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...options.map((s) => ({
+          text: s.label,
+          onPress: async () => {
+            await updateProject(projectId, { status: s.key });
+            refresh();
+          },
+        })),
+      ],
+    );
+  }
+
+  async function handleSendNote() {
+    const content = draftNote.trim();
+    if (!content || submittingNote) return;
+    setSubmittingNote(true);
+    const err = await addNote(content);
+    if (!err) setDraftNote('');
+    setSubmittingNote(false);
+  }
+
+  function handleLongPressNote(note: ProjectNote) {
+    if (note.created_by !== session?.user.id) return;
+    Alert.alert('Delete note', 'Remove this note?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => removeNote(note.id) },
+    ]);
   }
 
   function handleUncompleteTask(taskId: string) {
@@ -150,7 +215,7 @@ export function ProjectDetailScreen() {
     ...pastAppts.map((a): ChildItem => ({ kind: 'appointment', data: a })),
   ];
 
-  const visibleItems = activeTab === 'active' ? activeItems : pastItems;
+  const visibleItems = activeTab === 'past' ? pastItems : activeItems;
   const colors = STATUS_COLORS[project.status] ?? STATUS_COLORS.not_started;
   const ownerName = project.owner ? memberMap.get(project.owner) ?? 'Unknown' : null;
   const dueStr = project.due_date ? formatDue(project.due_date) : null;
@@ -213,8 +278,35 @@ export function ProjectDetailScreen() {
     );
   }
 
+  function renderNote({ item }: { item: ProjectNote }) {
+    const authorName = memberMap.get(item.created_by) ?? 'Unknown';
+    const isOwn = item.created_by === session?.user.id;
+    return (
+      <TouchableOpacity
+        style={styles.noteRow}
+        onLongPress={() => handleLongPressNote(item)}
+        activeOpacity={isOwn ? 0.7 : 1}
+        delayLongPress={400}
+      >
+        <View style={styles.noteAvatar}>
+          <Text style={styles.noteAvatarText}>{authorName.charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={styles.noteContent}>
+          <View style={styles.noteHeader}>
+            <Text style={styles.noteAuthor}>{authorName}</Text>
+            <Text style={styles.noteTime}>{formatNoteTime(item.created_at)}</Text>
+          </View>
+          <Text style={styles.noteText}>{item.content}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Back */}
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
@@ -226,11 +318,15 @@ export function ProjectDetailScreen() {
         <Text style={styles.projectTitle}>{project.title}</Text>
 
         <View style={styles.projectMeta}>
-          <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
+          <TouchableOpacity
+            style={[styles.statusBadge, { backgroundColor: colors.bg }]}
+            onPress={handleChangeStatus}
+            activeOpacity={0.7}
+          >
             <Text style={[styles.statusBadgeText, { color: colors.fg }]}>
               {STATUS_LABEL[project.status] ?? project.status}
             </Text>
-          </View>
+          </TouchableOpacity>
           {ownerName && <Text style={styles.metaText}>{ownerName}</Text>}
           {dueStr && <Text style={styles.metaText}>Due {dueStr}</Text>}
         </View>
@@ -238,14 +334,6 @@ export function ProjectDetailScreen() {
         {project.description ? (
           <Text style={styles.projectDesc}>{project.description}</Text>
         ) : null}
-
-        {/* Mark done button (only if in_progress) */}
-        {project.status === 'in_progress' && (
-          <TouchableOpacity style={styles.markDoneButton} onPress={handleMarkDone}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.sageDark} />
-            <Text style={styles.markDoneLabel}>Mark project done</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Tabs */}
@@ -259,6 +347,14 @@ export function ProjectDetailScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.tab, activeTab === 'notes' && styles.tabActive]}
+          onPress={() => setActiveTab('notes')}
+        >
+          <Text style={[styles.tabLabel, activeTab === 'notes' && styles.tabLabelActive]}>
+            Notes {notes.length > 0 ? `(${notes.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'past' && styles.tabActive]}
           onPress={() => setActiveTab('past')}
         >
@@ -268,20 +364,60 @@ export function ProjectDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={visibleItems}
-        keyExtractor={(item) => `${item.kind}-${item.data.id}`}
-        renderItem={renderItem}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {activeTab === 'active' ? 'No active tasks or appointments' : 'Nothing here yet'}
-            </Text>
+      {activeTab === 'notes' ? (
+        <View style={styles.notesContainer}>
+          <FlatList
+            data={notes}
+            keyExtractor={(item) => item.id}
+            renderItem={renderNote}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No notes yet — add one below</Text>
+              </View>
+            }
+            contentContainerStyle={styles.notesListContent}
+          />
+          <View style={styles.composeRow}>
+            <TextInput
+              style={styles.composeInput}
+              value={draftNote}
+              onChangeText={setDraftNote}
+              placeholder="Add a note…"
+              placeholderTextColor={theme.colors.textFaint}
+              multiline
+              maxLength={2000}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (!draftNote.trim() || submittingNote) && styles.sendButtonDisabled]}
+              onPress={handleSendNote}
+              disabled={!draftNote.trim() || submittingNote}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="send"
+                size={18}
+                color={draftNote.trim() && !submittingNote ? theme.colors.sage : theme.colors.textFaint}
+              />
+            </TouchableOpacity>
           </View>
-        }
-        contentContainerStyle={styles.listContent}
-      />
+        </View>
+      ) : (
+        <FlatList
+          data={visibleItems}
+          keyExtractor={(item) => `${item.kind}-${item.data.id}`}
+          renderItem={renderItem}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                {activeTab === 'active' ? 'No active tasks or appointments' : 'Nothing here yet'}
+              </Text>
+            </View>
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      )}
 
       {/* Add FAB — only on active tab */}
       {activeTab === 'active' && (
@@ -311,7 +447,7 @@ export function ProjectDetailScreen() {
       >
         <Text style={styles.deleteLabel}>Delete project</Text>
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -372,22 +508,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textSecondary,
     lineHeight: 22,
-  },
-  markDoneButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    alignSelf: 'flex-start',
-    backgroundColor: theme.colors.sageTint,
-    borderRadius: theme.borderRadius.chip,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  markDoneLabel: {
-    fontSize: theme.fontSize.label,
-    fontFamily: theme.fontFamily.sansSemiBold,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.sageDark,
   },
   tabBar: {
     flexDirection: 'row',
@@ -529,5 +649,89 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.body,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.overdueFg,
+  },
+  notesContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.canvas,
+  },
+  notesListContent: { paddingBottom: theme.spacing.md },
+  noteRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.screen,
+    backgroundColor: theme.colors.surface,
+  },
+  noteAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.sageTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  noteAvatarText: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.sageDark,
+  },
+  noteContent: { flex: 1, gap: theme.spacing.xs },
+  noteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  noteAuthor: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+  },
+  noteTime: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+  },
+  noteText: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textSecondary,
+    lineHeight: 22,
+  },
+  composeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.screen,
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+    backgroundColor: theme.colors.surface,
+  },
+  composeInput: {
+    flex: 1,
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.canvas,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    maxHeight: 120,
+    minHeight: 40,
+  },
+  sendButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  sendButtonDisabled: {
+    opacity: 0.4,
   },
 });

@@ -35,10 +35,13 @@ export function TaskListScreen() {
   const { circle, members, loading: circleLoading } = useCircle();
   const [filter, setFilter] = useState<Filter>('all');
   const [fabOpen, setFabOpen] = useState(false);
+  const [filterProjectIds, setFilterProjectIds] = useState<string[]>([]);
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
 
   const { sections, loading: dataLoading, handleComplete, refresh } = useOverview(
     circle?.id ?? null,
     filter,
+    currentUserId,
   );
 
   const { projects } = useProjectList(circle?.id ?? null);
@@ -49,10 +52,28 @@ export function TaskListScreen() {
     return map;
   }, [projects]);
 
+  const activeProjects = useMemo(
+    () => projects.filter((p) => p.status !== 'done'),
+    [projects],
+  );
+
+  const filteredSections = useMemo(() => {
+    if (filter !== 'all' || filterProjectIds.length === 0) return sections;
+    return sections
+      .map((section) => ({
+        ...section,
+        data: section.data.filter((item) =>
+          filterProjectIds.includes(item.data.project_id ?? ''),
+        ),
+      }))
+      .filter((section) => section.data.length > 0);
+  }, [sections, filter, filterProjectIds]);
+
   useFocusEffect(
     useCallback(() => {
       refresh();
       setFabOpen(false);
+      setFilterDropdownOpen(false);
     }, [refresh]),
   );
 
@@ -66,6 +87,7 @@ export function TaskListScreen() {
   const headerInitial = currentMember?.displayName.charAt(0).toUpperCase() ?? '?';
 
   const isLoading = circleLoading || (dataLoading && sections.length === 0);
+  const isFiltered = filter === 'all' && filterProjectIds.length > 0;
 
   function renderSectionHeader({ section }: { section: OverviewSection }) {
     const isToday = section.key === 'today';
@@ -83,7 +105,6 @@ export function TaskListScreen() {
 
   function buildMenuItems(item: OverviewItem): DropdownMenuItem[] {
     const hasProject = !!item.data.project_id;
-    const activeProjects = projects.filter((p) => p.status !== 'done');
 
     const deleteItem = async () => {
       if (item.kind === 'task') await deleteTask(item.data.id);
@@ -174,7 +195,7 @@ export function TaskListScreen() {
   }
 
   const emptyText = filter === 'mine'
-    ? 'Nothing assigned to you.'
+    ? 'No tasks assigned to you.'
     : filter === 'done'
     ? 'No completed tasks yet.'
     : 'Nothing coming up.';
@@ -212,18 +233,91 @@ export function TaskListScreen() {
         </View>
       </View>
 
+      {/* Filter row — only on Open tab */}
+      {filter === 'all' && (
+        <>
+          <View style={styles.filterRow}>
+            <TouchableOpacity
+              style={[styles.filterIconBtn, filterDropdownOpen && styles.filterIconBtnActive]}
+              onPress={() => { setFilterDropdownOpen((o) => !o); setFabOpen(false); }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="funnel-outline"
+                size={16}
+                color={filterDropdownOpen ? theme.colors.surface : theme.colors.sage}
+              />
+            </TouchableOpacity>
+
+            {isFiltered && (
+              <>
+                <View style={styles.filterChipRow}>
+                  {filterProjectIds.map((id) => (
+                    <View key={id} style={styles.filterChip}>
+                      <Text style={styles.filterChipLabel} numberOfLines={1}>
+                        {projectMap.get(id) ?? id}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setFilterProjectIds((ids) => ids.filter((i) => i !== id))}
+                        hitSlop={6}
+                      >
+                        <Ionicons name="close" size={13} color={theme.colors.sageDark} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={() => setFilterProjectIds([])} hitSlop={8}>
+                  <Text style={styles.clearAllLabel}>Clear</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          {filterDropdownOpen && (
+            <View style={styles.filterDropdown}>
+              {activeProjects.length === 0 ? (
+                <Text style={styles.filterDropdownEmpty}>No active projects</Text>
+              ) : (
+                activeProjects.map((proj) => {
+                  const selected = filterProjectIds.includes(proj.id);
+                  return (
+                    <TouchableOpacity
+                      key={proj.id}
+                      style={styles.filterDropdownRow}
+                      onPress={() =>
+                        setFilterProjectIds((ids) =>
+                          selected ? ids.filter((i) => i !== proj.id) : [...ids, proj.id],
+                        )
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.filterDropdownLabel, selected && styles.filterDropdownLabelSelected]}>
+                        {proj.title}
+                      </Text>
+                      {selected && <Ionicons name="checkmark" size={16} color={theme.colors.sage} />}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </>
+      )}
+
       {/* Content */}
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.sage} />
         </View>
-      ) : sections.length === 0 ? (
+      ) : filteredSections.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>{emptyText}</Text>
+          <Text style={styles.emptyText}>
+            {isFiltered ? 'Nothing matches your filter.' : emptyText}
+          </Text>
         </View>
       ) : (
         <SectionList<OverviewItem, OverviewSection>
-          sections={sections}
+          sections={filteredSections}
           keyExtractor={(item) =>
             item.kind === 'task' ? `task-${item.data.id}` : `appt-${item.data.id}`
           }
@@ -235,10 +329,10 @@ export function TaskListScreen() {
       )}
 
       {/* FAB backdrop — closes menu when tapping outside */}
-      {fabOpen && (
+      {(fabOpen || filterDropdownOpen) && (
         <TouchableOpacity
           style={styles.fabBackdrop}
-          onPress={() => setFabOpen(false)}
+          onPress={() => { setFabOpen(false); setFilterDropdownOpen(false); }}
           activeOpacity={1}
         />
       )}
@@ -396,6 +490,98 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.body,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textMuted,
+  },
+  // Filter row
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.screen,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    minHeight: 36,
+  },
+  filterIconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.sageTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.sageLight,
+    flexShrink: 0,
+  },
+  filterIconBtnActive: {
+    backgroundColor: theme.colors.sage,
+    borderColor: theme.colors.sage,
+  },
+  filterChipRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.colors.sageTint,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: theme.colors.sageLight,
+  },
+  filterChipLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.sageDark,
+    maxWidth: 120,
+  },
+  clearAllLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textMuted,
+    flexShrink: 0,
+  },
+  // Filter dropdown
+  filterDropdown: {
+    marginHorizontal: theme.spacing.screen,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.sm,
+    zIndex: 10,
+  },
+  filterDropdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  filterDropdownLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+  },
+  filterDropdownLabelSelected: {
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sage,
+  },
+  filterDropdownEmpty: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
   },
   // FAB
   fab: {
