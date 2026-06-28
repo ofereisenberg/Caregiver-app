@@ -6,87 +6,67 @@
 
 ## Current Status
 
-Project Notes feature complete. Release APK build infrastructure in place — app successfully sideloaded and running on a second device. All core features are done.
+Multi-circle support fully implemented. A user can now create multiple circles, switch between them in Settings, and invite existing users (via code entry) or new users (via the existing invite flow). All main screen headers show the active circle name.
 
 ---
 
 ## What was done this session (2026-06-28)
 
-### Project Notes feature
+### Multi-circle support (F12)
 
-**Migration `20260628000000_project_notes.sql`**
-
-- New `project_notes` table: `id`, `project_id`, `circle_id`, `content`, `created_by`, `created_at`
-- RLS: circle members can read and insert; authors can delete their own notes
+**Migration `20260628100000_active_circle.sql`**
+- Added `active_circle_id uuid REFERENCES care_circle(id)` (nullable) to `user_profile`
 - Applied via `supabase db push` — live in production
-- TypeScript types regenerated via `supabase gen types typescript --linked`
+- TypeScript types regenerated
 
-**`src/services/projectNotes.ts`** — new file
+**`src/services/circle.ts`**
+- `getUserCircles(userId)` — returns all circles the user belongs to
+- `setActiveCircle(userId, circleId)` — writes `active_circle_id` to `user_profile`
 
-- `getProjectNotes(projectId)` — fetches all notes for a project, newest first
-- `addProjectNote(projectId, circleId, content, createdBy)`
-- `deleteProjectNote(noteId)`
+**`src/contexts/AuthContext.tsx`** — significant update
+- New `SetupStage`: `'needs_active_circle'` (user has 2+ circles, none selected yet)
+- Loads `active_circle_id` from `user_profile` at login; holds in memory for the session
+- Null-default logic: 1 circle → auto-select silently; 2+ circles → `needs_active_circle` stage
+- Exposes `activeCircleId` and `switchCircle(circleId)` to all consumers
 
-**`src/hooks/useProjectNotes.ts`** — new file
+**`src/hooks/useCircle.ts`**
+- Now reads `activeCircleId` from AuthContext instead of first-found DB lookup
 
-- `notes`, `loading`, `error`, `refresh`, `addNote`, `removeNote`
-- Realtime subscription on `project_notes` filtered by `project_id`
-- Optimistic delete (removes from local state, reverts on DB error)
+**`src/hooks/useUserCircles.ts`** — new file
+- Returns all user circles with member counts; used in Settings
 
-**`src/screens/app/ProjectDetailScreen.tsx`**
+**Navigation**
+- `SelectCircle` added to `AuthStackParamList` + `AuthNavigator`
+- `CreateCircle`, `JoinCircle` added to `AppStackParamList` + `AppNavigator`
 
-- Notes tab (between Active and Past), with note count badge
-- FlatList of notes + compose row (TextInput + send icon)
-- Note rows: author avatar (initial), author name, timestamp, content
-- Long-press on own note → delete confirmation alert
+**`src/screens/auth/SelectCircleScreen.tsx`** — new file
+- Shown when `setupStage === 'needs_active_circle'`
+- Lists all circles; tapping one sets it as active and enters the app
 
-### Release APK build infrastructure
+**`src/screens/auth/EnterEmailScreen.tsx`**
+- Routes to `SelectCircle` for `needs_active_circle` stage
 
-**Bug fix — `src/constants/config.ts`**
+**`src/screens/auth/InviteManagementScreen.tsx`** — bug fix
+- Was calling `getUserCircle()` (`.maybeSingle()`) which errors with multiple circles → infinite spinner
+- Now uses `activeCircleId` from context; falls back to `getUserCircle` only during onboarding
 
-- `requireEnv(key)` used dynamic `process.env[key]` access, which Expo's Babel transform cannot substitute at bundle time (it only substitutes static `process.env.LITERAL_KEY` references)
-- Fixed to pass the already-accessed value: `requireEnv(process.env.EXPO_PUBLIC_SUPABASE_URL, 'EXPO_PUBLIC_SUPABASE_URL')`
+**`src/screens/settings/CreateCircleScreen.tsx`** — new file
+- Simple name input; creates circle and returns to Settings (does not auto-switch)
 
-**`build-release.ps1`** — new file
+**`src/screens/settings/JoinCircleScreen.tsx`** — new file
+- Code input for existing users to join a second circle; calls `joinCircleWithToken`
 
-- Prompts for version number (Enter = keep current)
-- Auto-increments `versionCode` in `build.gradle`
-- Updates `version` in `app.json` and `versionName` in `build.gradle`
-- Deletes cached bundles to force fresh JS bundling
-- Builds release APK
-- Copies to `releases/v{version}/caregiver-app-v{version}.apk`
+**`src/screens/settings/UserSettingsScreen.tsx`**
+- CIRCLE section replaced with CIRCLES section
+- Lists all user circles: name + member count + checkmark on active
+- Tapping active circle → navigate to CircleAdmin; tapping non-active → switch then navigate
+- `+` button opens inline popup menu (react-native-popup-menu): "Create circle" / "Join with code"
 
-**`buildandroid.bat`** — new file
+**`src/screens/app/ProjectsScreen.tsx`**
+- Circle name added to header (matching TaskListScreen and CalendarScreen which already had it)
 
-- Double-click launcher for `build-release.ps1`
-
-**`package.json`**
-
-- Added `build:android` npm script → `npm run build:android`
-
-**`.gitignore`**
-
-- Added `releases/` (APK files should not be committed)
-
----
-
-## Next Implementation: Multi-Circle Support
-
-Design doc: `docs/design-multi-circle.md`
-
-At the start of the implementation session, convert the checklist to todos and mark each item done as you complete it.
-
-- [ ] DB migration: add `active_circle_id uuid REFERENCES care_circle(id)` (nullable) to `user_profile`
-- [ ] Run migration via `supabase db push` and regenerate types
-- [ ] Service: add `getUserCircles(userId)` to `services/circle.ts` — returns all circles the user belongs to
-- [ ] Service: add `setActiveCircle(userId, circleId)` to `services/circle.ts` — writes `active_circle_id` to `user_profile`
-- [ ] AuthContext: load `active_circle_id` from `user_profile` at login; expose `activeCircleId` and `switchCircle(circleId)`
-- [ ] AuthContext null-default logic: if 1 circle → auto-select silently; if 2+ circles and no active → show circle picker before entering app
-- [ ] `useCircle()`: read `activeCircleId` from AuthContext instead of calling `getUserCircle()` (first-found)
-- [ ] Settings > Circles section: replace current single-circle display with a list — rows show circle name + member count + checkmark on active; tapping non-active row switches immediately
-- [ ] Settings > Circles: add "+" button in section header → opens create-circle form (name input + confirm)
-- [ ] Create Circle flow from Settings: create circle, return to Circles list (do not auto-switch)
-- [ ] All main screen headers (Overview, Appointments, Calendar, Projects): always show active circle name
+**`src/screens/app/ProjectDetailScreen.tsx`** — minor fix
+- Status array typed as literal union (pre-existing TS error surfaced by type regeneration)
 
 ---
 
@@ -107,6 +87,7 @@ At the start of the implementation session, convert the checklist to todos and m
 
 ### Medium
 
+- F13 — Email invite (send invite code via Resend to recipient's email — design: enter email in app, Edge Function sends message with code + instructions)
 - F9 — i18n (German/English, i18next)
 
 ### Low

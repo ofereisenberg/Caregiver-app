@@ -18,7 +18,7 @@ import {
 type Props = NativeStackScreenProps<AuthStackParamList, 'InviteManagement'>;
 
 export function InviteManagementScreen({ navigation }: Props) {
-  const { session, recheckSetup } = useAuth();
+  const { session, recheckSetup, activeCircleId: contextCircleId } = useAuth();
   const insets = useSafeAreaInsets();
   const canGoBack = navigation.canGoBack();
   const [circleId, setCircleId] = useState<string | null>(null);
@@ -28,20 +28,28 @@ export function InviteManagementScreen({ navigation }: Props) {
   const [generatingInvite, setGeneratingInvite] = useState(false);
 
   const load = useCallback(async () => {
-    if (!session?.user.id) return;
-    const { data: circle } = await getUserCircle(session.user.id);
-    if (!circle) return;
-    setCircleId(circle.id);
+    if (!session?.user.id) { setLoading(false); return; }
+
+    // Prefer the in-memory active circle; fall back to DB lookup during onboarding
+    // (onboarding: circle just created but active_circle_id not yet persisted)
+    let id = contextCircleId;
+    if (!id) {
+      const { data: circle } = await getUserCircle(session.user.id);
+      id = circle?.id ?? null;
+    }
+
+    if (!id) { setLoading(false); return; }
+    setCircleId(id);
 
     const [inviteResult, membersResult] = await Promise.all([
-      getActiveInvite(circle.id),
-      getCircleMembers(circle.id),
+      getActiveInvite(id),
+      getCircleMembers(id),
     ]);
 
     setInviteCode(inviteResult.data?.token ?? null);
     setMembers(membersResult.data);
     setLoading(false);
-  }, [session]);
+  }, [session, contextCircleId]);
 
   useEffect(() => { load(); }, [load]);
 

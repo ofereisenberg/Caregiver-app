@@ -1,76 +1,71 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-import { AuthStackParamList } from '../../navigation/types';
-import { sendOtp } from '../../services/auth';
+import { joinCircleWithToken } from '../../services/circle';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'EnterEmail'>;
-
-export function EnterEmailScreen({ navigation }: Props) {
-  const { setupStage } = useAuth();
-  const [email, setEmail] = useState('');
+export function JoinCircleScreen() {
+  const navigation = useNavigation();
+  const { recheckSetup } = useAuth();
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Route forward if re-entering this screen mid-setup (e.g. app restart after OTP sent)
-  useEffect(() => {
-    if (setupStage === 'needs_profile') navigation.navigate('SetupProfile');
-    else if (setupStage === 'needs_circle') navigation.navigate('SetupCircle');
-    else if (setupStage === 'needs_active_circle') navigation.navigate('SelectCircle');
-  }, [setupStage, navigation]);
-
-  const handleSend = async () => {
-    const trimmed = email.trim().toLowerCase();
+  async function handleJoin() {
+    const trimmed = code.trim().toUpperCase();
     if (!trimmed) {
-      setError('Please enter your email address.');
+      setError('Please enter an invite code.');
       return;
     }
     setLoading(true);
     setError(null);
-    const { error: sendError } = await sendOtp(trimmed);
+    const { error: joinError } = await joinCircleWithToken(trimmed);
     setLoading(false);
-    if (sendError) {
-      setError(sendError);
+    if (joinError) {
+      setError(joinError);
       return;
     }
-    navigation.navigate('CheckEmail', { email: trimmed });
-  };
+    await recheckSetup();
+    navigation.goBack();
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.appName}>Care for Mutti</Text>
-        <Text style={styles.tagline}>Sign in to your care circle</Text>
-      </View>
+      <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
+        <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
+        <Text style={styles.backLabel}>Settings</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.screenTitle}>Join a circle</Text>
+      <Text style={styles.subtitle}>Enter the invite code shared with you.</Text>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Email address"
+          placeholder="Enter invite code"
           placeholderTextColor={theme.colors.textMuted}
-          value={email}
-          onChangeText={(t) => { setEmail(t); setError(null); }}
-          autoCapitalize="none"
+          value={code}
+          onChangeText={(t) => { setCode(t); setError(null); }}
+          autoCapitalize="characters"
           autoCorrect={false}
-          keyboardType="email-address"
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
+          returnKeyType="done"
+          onSubmitEditing={handleJoin}
+          autoFocus
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSend}
+          onPress={handleJoin}
           disabled={loading}
           activeOpacity={0.8}
         >
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.buttonLabel}>Send sign-in link</Text>
+            <Text style={styles.buttonLabel}>Join circle</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -83,22 +78,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.canvas,
     paddingHorizontal: theme.spacing.screen,
-    justifyContent: 'center',
   },
-  header: {
-    marginBottom: theme.spacing.xxl,
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 56,
+    paddingBottom: theme.spacing.sm,
+    gap: 2,
   },
-  appName: {
-    fontFamily: theme.fontFamily.sansBold,
+  backLabel: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.sage,
+  },
+  screenTitle: {
     fontSize: theme.fontSize.title,
+    fontFamily: theme.fontFamily.sansBold,
     color: theme.colors.textPrimary,
     letterSpacing: theme.letterSpacing.tight,
     marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.xl,
   },
-  tagline: {
-    fontFamily: theme.fontFamily.sans,
+  subtitle: {
     fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xl,
   },
   form: {
     gap: theme.spacing.md,
@@ -110,9 +115,11 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.input,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.lg,
-    fontFamily: theme.fontFamily.sans,
-    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansBold,
+    fontSize: theme.fontSize.subhead,
+    letterSpacing: theme.letterSpacing.wide,
     color: theme.colors.textPrimary,
+    textAlign: 'center',
   },
   error: {
     fontFamily: theme.fontFamily.sans,

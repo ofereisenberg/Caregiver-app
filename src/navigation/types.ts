@@ -5,6 +5,7 @@ export type AuthStackParamList = {
   CheckEmail: { email: string };
   SetupProfile: undefined;
   SetupCircle: undefined;
+  SelectCircle: undefined;
   InviteManagement: undefined;
 };
 
@@ -24,6 +25,8 @@ export type AppStackParamList = {
   AddProject: undefined;
   DailyDigest: undefined;
   CircleAdmin: undefined;
+  CreateCircle: undefined;
+  JoinCircle: undefined;
   InviteManagement: undefined;
   UserSettings: undefined;
 };

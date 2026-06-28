@@ -130,7 +130,7 @@ export function ProjectDetailScreen() {
   }
 
   function handleChangeStatus() {
-    const allStatuses: Array<{ key: string; label: string }> = [
+    const allStatuses: Array<{ key: 'not_started' | 'in_progress' | 'done'; label: string }> = [
       { key: 'not_started', label: 'Not started' },
       { key: 'in_progress', label: 'In progress' },
       { key: 'done', label: 'Done' },

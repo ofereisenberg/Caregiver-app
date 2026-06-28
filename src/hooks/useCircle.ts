@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
-import { getCircleMembers, getUserCircle, CircleMemberWithName } from '../services/circle';
+import { getCircleMembers, CircleMemberWithName } from '../services/circle';
+import { supabase } from '../services/supabase';
 import { Tables } from '../types/database';
 
 type CareCircle = Tables<'care_circle'>;
@@ -14,14 +15,14 @@ interface UseCircleResult {
 }
 
 export function useCircle(): UseCircleResult {
-  const { session } = useAuth();
+  const { activeCircleId } = useAuth();
   const [circle, setCircle] = useState<CareCircle | null>(null);
   const [members, setMembers] = useState<CircleMemberWithName[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session?.user) {
+    if (!activeCircleId) {
       setLoading(false);
       return;
     }
@@ -31,12 +32,16 @@ export function useCircle(): UseCircleResult {
     async function load() {
       setLoading(true);
 
-      const { data: circleData, error: circleError } = await getUserCircle(session!.user.id);
+      const { data: circleData, error: circleError } = await supabase
+        .from('care_circle')
+        .select('*')
+        .eq('id', activeCircleId!)
+        .single();
 
       if (cancelled) return;
 
       if (circleError || !circleData) {
-        setError(circleError ?? 'No circle found.');
+        setError(circleError?.message ?? 'Circle not found.');
         setLoading(false);
         return;
       }
@@ -54,7 +59,7 @@ export function useCircle(): UseCircleResult {
     load();
 
     return () => { cancelled = true; };
-  }, [session?.user?.id]);
+  }, [activeCircleId]);
 
   return { circle, members, loading, error };
 }

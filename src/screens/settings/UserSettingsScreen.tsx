@@ -10,27 +10,40 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCircle } from '../../hooks/useCircle';
 import { useProfile } from '../../hooks/useProfile';
+import { useUserCircles } from '../../hooks/useUserCircles';
 import { updateDisplayName } from '../../services/profile';
 
 export function UserSettingsScreen() {
-  const { session, signOut } = useAuth();
+  const { session, activeCircleId, switchCircle, signOut } = useAuth();
   const navigation = useNavigation();
-  const { members } = useCircle();
   const { profile, loading, reload } = useProfile();
+  const { circles, refresh: refreshCircles } = useUserCircles();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [switchingCircleId, setSwitchingCircleId] = useState<string | null>(null);
   const nameInputRef = useRef<TextInput>(null);
 
-  const isAdmin = members.find((m) => m.user_id === session?.user?.id)?.role === 'admin';
+  useFocusEffect(
+    React.useCallback(() => { refreshCircles(); }, [refreshCircles]),
+  );
+
+  async function handleCircleTap(circleId: string) {
+    if (circleId !== activeCircleId) {
+      setSwitchingCircleId(circleId);
+      await switchCircle(circleId);
+      setSwitchingCircleId(null);
+    }
+    navigation.navigate('CircleAdmin' as never);
+  }
 
   function startEditName() {
     setNameInput(profile?.display_name ?? '');
@@ -132,20 +145,56 @@ export function UserSettingsScreen() {
         </View>
       </View>
 
-      {isAdmin && (
-        <>
-          <Text style={styles.sectionLabel}>CIRCLE</Text>
-          <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => navigation.navigate('CircleAdmin' as never)}
-            >
-              <Text style={styles.rowLabel}>Circle settings</Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.textHairline} />
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionLabel}>CIRCLES</Text>
+        <Menu>
+          <MenuTrigger>
+            <Ionicons name="add" size={20} color={theme.colors.sage} />
+          </MenuTrigger>
+          <MenuOptions customStyles={circleMenuStyles}>
+            <MenuOption onSelect={() => navigation.navigate('CreateCircle' as never)}>
+              <Text style={styles.menuItem}>Create circle</Text>
+            </MenuOption>
+            <View style={styles.menuDivider} />
+            <MenuOption onSelect={() => navigation.navigate('JoinCircle' as never)}>
+              <Text style={styles.menuItem}>Join with code</Text>
+            </MenuOption>
+          </MenuOptions>
+        </Menu>
+      </View>
+      <View style={styles.card}>
+        {circles.map((circle, index) => {
+          const isActive = circle.id === activeCircleId;
+          const isSwitching = switchingCircleId === circle.id;
+          return (
+            <React.Fragment key={circle.id}>
+              {index > 0 && <View style={styles.rowDivider} />}
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => handleCircleTap(circle.id)}
+                disabled={switchingCircleId !== null}
+                activeOpacity={0.7}
+              >
+                <View style={styles.circleRowLeft}>
+                  <Text style={[styles.rowLabel, isActive && styles.rowLabelActive]}>
+                    {circle.name}
+                  </Text>
+                  <Text style={styles.memberCount}>
+                    {circle.memberCount} {circle.memberCount === 1 ? 'member' : 'members'}
+                  </Text>
+                </View>
+                {isSwitching ? (
+                  <ActivityIndicator size="small" color={theme.colors.sage} />
+                ) : isActive ? (
+                  <Ionicons name="checkmark" size={20} color={theme.colors.sage} />
+                ) : (
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textHairline} />
+                )}
+              </TouchableOpacity>
+            </React.Fragment>
+          );
+        })}
+      </View>
 
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <Text style={styles.signOutLabel}>Sign out</Text>
@@ -153,6 +202,20 @@ export function UserSettingsScreen() {
     </ScrollView>
   );
 }
+
+const circleMenuStyles = {
+  optionsContainer: {
+    width: 200,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: theme.borderRadius.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden' as const,
+  },
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.canvas },
@@ -239,6 +302,39 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.divider,
     marginHorizontal: theme.spacing.lg,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.sm,
+  },
+  menuItem: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textPrimary,
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.divider,
+    marginHorizontal: theme.spacing.md,
+  },
+  circleRowLeft: {
+    gap: 2,
+    flex: 1,
+  },
+  rowLabelActive: {
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+  },
+  memberCount: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
   },
   signOutButton: {
     alignItems: 'center',

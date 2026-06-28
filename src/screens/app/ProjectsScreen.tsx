@@ -105,7 +105,10 @@ export function ProjectsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Projects</Text>
+        <View>
+          <Text style={styles.circleName}>{circle?.name ?? ''}</Text>
+          <Text style={styles.headerTitle}>Projects</Text>
+        </View>
         <TouchableOpacity
           style={styles.avatar}
           onPress={() => navigation.navigate('UserSettings')}
@@ -188,6 +191,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.screen,
     paddingTop: 56,
     paddingBottom: theme.spacing.lg,
+  },
+  circleName: {
+    fontSize: theme.fontSize.micro,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textMuted,
+    letterSpacing: theme.letterSpacing.wide,
+    textTransform: 'uppercase',
+    marginBottom: theme.spacing.xs,
   },
   headerTitle: {
     fontSize: theme.fontSize.title,

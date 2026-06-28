@@ -7,6 +7,31 @@ type CircleInvite = Tables<'circle_invites'>;
 
 export type CircleMemberWithName = CircleMember & { displayName: string };
 
+export async function getUserCircles(userId: string): Promise<{ data: CareCircle[]; error: string | null }> {
+  const { data: members, error: memberError } = await supabase
+    .from('care_circle_member')
+    .select('circle_id')
+    .eq('user_id', userId);
+
+  if (memberError || !members?.length) return { data: [], error: memberError?.message ?? null };
+
+  const circleIds = members.map((m) => m.circle_id);
+  const { data: circles, error: circleError } = await supabase
+    .from('care_circle')
+    .select('*')
+    .in('id', circleIds);
+
+  return { data: circles ?? [], error: circleError?.message ?? null };
+}
+
+export async function setActiveCircle(userId: string, circleId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('user_profile')
+    .update({ active_circle_id: circleId })
+    .eq('id', userId);
+  return { error: error?.message ?? null };
+}
+
 export async function getUserCircle(userId: string): Promise<{ data: CareCircle | null; error: string | null }> {
   const { data: member, error: memberError } = await supabase
     .from('care_circle_member')

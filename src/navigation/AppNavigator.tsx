@@ -15,6 +15,8 @@ import { TaskDetailScreen } from '../screens/app/TaskDetailScreen';
 import { TaskListScreen } from '../screens/app/TaskListScreen';
 import { InviteManagementScreen } from '../screens/auth/InviteManagementScreen';
 import { CircleAdminScreen } from '../screens/settings/CircleAdminScreen';
+import { CreateCircleScreen } from '../screens/settings/CreateCircleScreen';
+import { JoinCircleScreen } from '../screens/settings/JoinCircleScreen';
 import { UserSettingsScreen } from '../screens/settings/UserSettingsScreen';
 import { theme } from '../constants/theme';
 import { AppStackParamList, BottomTabParamList } from './types';
@@ -90,6 +92,8 @@ export function AppNavigator() {
       <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} />
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
       <Stack.Screen name="CircleAdmin" component={CircleAdminScreen} />
+      <Stack.Screen name="CreateCircle" component={CreateCircleScreen} />
+      <Stack.Screen name="JoinCircle" component={JoinCircleScreen} />
       <Stack.Screen name="UserSettings" component={UserSettingsScreen} />
       <Stack.Screen name="InviteManagement" component={InviteManagementScreen} />
 
