@@ -70,6 +70,26 @@ Project Notes feature complete. Release APK build infrastructure in place — ap
 
 ---
 
+## Next Implementation: Multi-Circle Support
+
+Design doc: `docs/design-multi-circle.md`
+
+At the start of the implementation session, convert the checklist to todos and mark each item done as you complete it.
+
+- [ ] DB migration: add `active_circle_id uuid REFERENCES care_circle(id)` (nullable) to `user_profile`
+- [ ] Run migration via `supabase db push` and regenerate types
+- [ ] Service: add `getUserCircles(userId)` to `services/circle.ts` — returns all circles the user belongs to
+- [ ] Service: add `setActiveCircle(userId, circleId)` to `services/circle.ts` — writes `active_circle_id` to `user_profile`
+- [ ] AuthContext: load `active_circle_id` from `user_profile` at login; expose `activeCircleId` and `switchCircle(circleId)`
+- [ ] AuthContext null-default logic: if 1 circle → auto-select silently; if 2+ circles and no active → show circle picker before entering app
+- [ ] `useCircle()`: read `activeCircleId` from AuthContext instead of calling `getUserCircle()` (first-found)
+- [ ] Settings > Circles section: replace current single-circle display with a list — rows show circle name + member count + checkmark on active; tapping non-active row switches immediately
+- [ ] Settings > Circles: add "+" button in section header → opens create-circle form (name input + confirm)
+- [ ] Create Circle flow from Settings: create circle, return to Circles list (do not auto-switch)
+- [ ] All main screen headers (Overview, Appointments, Calendar, Projects): always show active circle name
+
+---
+
 ## Open Issues
 
 | #  | Description                                                    |
