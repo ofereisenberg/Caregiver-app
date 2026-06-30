@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,6 +20,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useProjectList } from '../../hooks/useProjectList';
+import { useVacations } from '../../hooks/useVacations';
 import { createTask } from '../../services/tasks';
 import { AppStackParamList } from '../../navigation/types';
 
@@ -62,6 +63,7 @@ export function AddTaskScreen() {
   const { session } = useAuth();
   const { circle, members } = useCircle();
   const { projects } = useProjectList(circle?.id ?? null);
+  const { vacations } = useVacations(circle?.id ?? null);
 
   const titleRef = useRef<TextInput>(null);
   const [title, setTitle] = useState('');
@@ -87,7 +89,7 @@ export function AddTaskScreen() {
         value: dueDate ?? new Date(),
         mode: 'date',
         minimumDate: new Date(),
-        onChange: (_event, selected) => {
+        onValueChange: (_event, selected) => {
           if (selected) setDueDate(selected);
         },
       });
@@ -103,7 +105,7 @@ export function AddTaskScreen() {
         value: base,
         mode: 'time',
         is24Hour: true,
-        onChange: (_event, selected) => {
+        onValueChange: (_event, selected) => {
           if (!selected) return;
           if (mode === 'start') setStartTime(selected);
           else setEndTime(selected);
@@ -150,12 +152,23 @@ export function AddTaskScreen() {
     }
   }, [title, circle, session, repeat, assigneeId, dueDate, onlyMe, route.params, navigation]);
 
+  const vacationWarning = useMemo(() => {
+    if (!assigneeId || !dueDate) return null;
+    const dueDateKey = dueDate.toISOString().split('T')[0];
+    const onVacation = vacations.find(
+      (v) => v.user_id === assigneeId && v.start_date <= dueDateKey && v.end_date >= dueDateKey,
+    );
+    if (!onVacation) return null;
+    const name = members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Assignee';
+    return `⚠️ ${name} is on vacation on this date`;
+  }, [assigneeId, dueDate, vacations, members]);
+
   const canAdd = title.trim().length > 0 && !saving;
 
   return (
     <KeyboardAvoidingView
       style={styles.sheet}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
     >
       {/* Pull handle */}
       <View style={styles.handle} />
@@ -344,6 +357,7 @@ export function AddTaskScreen() {
           </>
         )}
 
+        {vacationWarning && <Text style={styles.warningText}>{vacationWarning}</Text>}
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         {/* Add button */}
@@ -475,6 +489,17 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.small,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textMuted,
+  },
+  warningText: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.overdueFg,
+    backgroundColor: theme.colors.overdueBg,
+    borderRadius: theme.borderRadius.badge,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   errorText: {
     fontSize: theme.fontSize.small,

@@ -16,15 +16,18 @@ import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-m
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { FONT_MULTIPLIERS, FONT_SCALE_LABELS, FontScaleKey, useFontScale } from '../../contexts/FontScaleContext';
 import { useProfile } from '../../hooks/useProfile';
 import { useUserCircles } from '../../hooks/useUserCircles';
 import { updateDisplayName } from '../../services/profile';
+import { ScaledText } from '../../components/ScaledText';
 
 export function UserSettingsScreen() {
   const { session, activeCircleId, switchCircle, signOut } = useAuth();
   const navigation = useNavigation();
   const { profile, loading, reload } = useProfile();
   const { circles, refresh: refreshCircles } = useUserCircles();
+  const { scaleKey, setScale } = useFontScale();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -85,12 +88,12 @@ export function UserSettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <Text style={styles.screenTitle}>Settings</Text>
+      <ScaledText style={styles.screenTitle}>Settings</ScaledText>
 
-      <Text style={styles.sectionLabel}>ACCOUNT</Text>
+      <ScaledText style={styles.sectionLabel}>ACCOUNT</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Name</Text>
+          <ScaledText style={styles.rowLabel}>Name</ScaledText>
           {editingName ? (
             <View style={styles.nameEditRow}>
               <TextInput
@@ -117,19 +120,42 @@ export function UserSettingsScreen() {
             </View>
           ) : (
             <TouchableOpacity style={styles.rowValueRow} onPress={startEditName}>
-              <Text style={styles.rowValue}>{profile?.display_name ?? ''}</Text>
+              <ScaledText style={styles.rowValue}>{profile?.display_name ?? ''}</ScaledText>
               <Ionicons name="pencil-outline" size={15} color={theme.colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
         <View style={styles.rowDivider} />
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Email</Text>
-          <Text style={styles.rowValueMuted}>{session?.user?.email ?? ''}</Text>
+          <ScaledText style={styles.rowLabel}>Email</ScaledText>
+          <ScaledText style={styles.rowValueMuted}>{session?.user?.email ?? ''}</ScaledText>
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>GOOGLE CALENDAR</Text>
+      <ScaledText style={styles.sectionLabel}>TEXT SIZE</ScaledText>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.scaleOptions}>
+            {(Object.keys(FONT_MULTIPLIERS) as FontScaleKey[]).map((key) => {
+              const active = key === scaleKey;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.scaleChip, active && styles.scaleChipActive]}
+                  onPress={() => setScale(key)}
+                  activeOpacity={0.75}
+                >
+                  <ScaledText style={[styles.scaleChipLabel, active && styles.scaleChipLabelActive]}>
+                    {FONT_SCALE_LABELS[key]}
+                  </ScaledText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <ScaledText style={styles.sectionLabel}>GOOGLE CALENDAR</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLabelBlock}>
@@ -146,7 +172,7 @@ export function UserSettingsScreen() {
       </View>
 
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionLabel}>CIRCLES</Text>
+        <ScaledText style={styles.sectionLabel}>CIRCLES</ScaledText>
         <Menu>
           <MenuTrigger>
             <Ionicons name="add" size={20} color={theme.colors.sage} />
@@ -176,12 +202,12 @@ export function UserSettingsScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.circleRowLeft}>
-                  <Text style={[styles.rowLabel, isActive && styles.rowLabelActive]}>
+                  <ScaledText style={[styles.rowLabel, isActive && styles.rowLabelActive]}>
                     {circle.name}
-                  </Text>
-                  <Text style={styles.memberCount}>
+                  </ScaledText>
+                  <ScaledText style={styles.memberCount}>
                     {circle.memberCount} {circle.memberCount === 1 ? 'member' : 'members'}
-                  </Text>
+                  </ScaledText>
                 </View>
                 {isSwitching ? (
                   <ActivityIndicator size="small" color={theme.colors.sage} />
@@ -197,7 +223,7 @@ export function UserSettingsScreen() {
       </View>
 
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutLabel}>Sign out</Text>
+        <ScaledText style={styles.signOutLabel}>Sign out</ScaledText>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -345,5 +371,34 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.body,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.overdueFg,
+  },
+  scaleOptions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  scaleChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.chip,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceElevated,
+  },
+  scaleChipActive: {
+    backgroundColor: theme.colors.sageTint,
+    borderColor: theme.colors.sageLight,
+  },
+  scaleChipLabel: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansMedium,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  scaleChipLabelActive: {
+    fontFamily: theme.fontFamily.sansBold,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.sageDark,
   },
 });

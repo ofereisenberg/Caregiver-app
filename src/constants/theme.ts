@@ -59,12 +59,12 @@ export const theme = {
   },
 
   fontSize: {
-    micro:     11, // uppercase labels, badge text, avatar initials
-    small:     12, // timestamps, spec values, secondary counts
-    label:     13, // section headers, segmented control, chips
-    body:      15, // task titles, primary body text
-    subhead:   19, // card/section headings
-    title:     23, // screen titles (Tasks, Calendar, etc.)
+    micro:     12, // uppercase labels, badge text, avatar initials
+    small:     13, // timestamps, spec values, secondary counts
+    label:     14, // section headers, segmented control, chips
+    body:      16, // task titles, primary body text
+    subhead:   20, // card/section headings
+    title:     24, // screen titles (Tasks, Calendar, etc.)
     display:   34, // design system header — not used in app
   },
 

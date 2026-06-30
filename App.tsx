@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MenuProvider } from 'react-native-popup-menu';
 
 import { AuthProvider } from './src/contexts/AuthContext';
+import { FontScaleProvider } from './src/contexts/FontScaleContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
@@ -29,12 +30,14 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <MenuProvider>
-        <AuthProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
-          <StatusBar style="dark" />
-        </AuthProvider>
+        <FontScaleProvider>
+          <AuthProvider>
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+            <StatusBar style="dark" />
+          </AuthProvider>
+        </FontScaleProvider>
       </MenuProvider>
     </SafeAreaProvider>
   );

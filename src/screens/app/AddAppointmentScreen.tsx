@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,6 +20,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useProjectList } from '../../hooks/useProjectList';
+import { useVacations } from '../../hooks/useVacations';
 import { getTask } from '../../services/tasks';
 import { createAppointment, getAppointment, updateAppointment } from '../../services/appointments';
 import { AppStackParamList } from '../../navigation/types';
@@ -223,6 +224,19 @@ export function AddAppointmentScreen() {
     }
   }, [title, details, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, circle, session, navigation, isEditMode, appointmentId]);
 
+  const { vacations } = useVacations(circle?.id ?? null);
+
+  const vacationWarning = useMemo(() => {
+    if (inviteeIds.length === 0) return null;
+    const startDateKey = startDate.toISOString().split('T')[0];
+    const onVacation = vacations.find(
+      (v) => inviteeIds.includes(v.user_id) && v.start_date <= startDateKey && v.end_date >= startDateKey,
+    );
+    if (!onVacation) return null;
+    const name = members.find((m) => m.user_id === onVacation.user_id)?.displayName ?? 'Assignee';
+    return `⚠️ ${name} is on vacation on this date`;
+  }, [inviteeIds, startDate, vacations, members]);
+
   const canAdd = title.trim().length > 0 && (isFullDay || endDate > startDate) && !saving;
 
   const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? "Don't repeat";
@@ -235,7 +249,7 @@ export function AddAppointmentScreen() {
   const pickerValue = pickerMode === 'start-date' || pickerMode === 'start-time' ? startDate : endDate;
 
   return (
-    <KeyboardAvoidingView style={styles.sheet} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={styles.sheet} behavior="padding">
       <View style={styles.handle} />
 
       <ScrollView
@@ -448,6 +462,7 @@ export function AddAppointmentScreen() {
           </>
         )}
 
+        {vacationWarning && <Text style={styles.warningText}>{vacationWarning}</Text>}
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <TouchableOpacity
@@ -690,6 +705,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  warningText: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.overdueFg,
+    backgroundColor: theme.colors.overdueBg,
+    borderRadius: theme.borderRadius.badge,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
   errorText: {

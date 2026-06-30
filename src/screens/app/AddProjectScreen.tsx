@@ -94,7 +94,7 @@ export function AddProjectScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.sheet}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
     >
       <View style={styles.handle} />
 

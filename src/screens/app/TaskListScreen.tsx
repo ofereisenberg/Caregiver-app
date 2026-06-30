@@ -19,6 +19,7 @@ import { useOverview } from '../../hooks/useOverview';
 import { useProjectList } from '../../hooks/useProjectList';
 import { DropdownMenuItem } from '../../components/DropdownMenu';
 import { OverviewItemRow } from '../../components/OverviewItemRow';
+import { ScaledText } from '../../components/ScaledText';
 import { OverviewItem, OverviewSection } from '../../utils/overviewGrouping';
 import { updateTask, deleteTask, uncompleteTask } from '../../services/tasks';
 import { updateAppointment, deleteAppointment } from '../../services/appointments';
@@ -93,12 +94,12 @@ export function TaskListScreen() {
     const isToday = section.key === 'today';
     return (
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, isToday && styles.sectionTitleToday]}>
+        <ScaledText style={[styles.sectionTitle, isToday && styles.sectionTitleToday]}>
           {section.title}
-        </Text>
-        <Text style={[styles.sectionCount, isToday && styles.sectionCountToday]}>
+        </ScaledText>
+        <ScaledText style={[styles.sectionCount, isToday && styles.sectionCountToday]}>
           {section.count}
-        </Text>
+        </ScaledText>
       </View>
     );
   }
@@ -205,8 +206,8 @@ export function TaskListScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.circleName}>{circle?.name ?? 'Care Circle'}</Text>
-          <Text style={styles.screenTitle}>Overview</Text>
+          <ScaledText style={styles.circleName}>{circle?.name ?? 'Care Circle'}</ScaledText>
+          <ScaledText style={styles.screenTitle}>Overview</ScaledText>
         </View>
         <TouchableOpacity
           style={styles.headerAvatar}
@@ -311,9 +312,9 @@ export function TaskListScreen() {
         </View>
       ) : filteredSections.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>
+          <ScaledText style={styles.emptyText}>
             {isFiltered ? 'Nothing matches your filter.' : emptyText}
-          </Text>
+          </ScaledText>
         </View>
       ) : (
         <SectionList<OverviewItem, OverviewSection>

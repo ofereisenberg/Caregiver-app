@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AddAppointmentScreen } from '../screens/app/AddAppointmentScreen';
 import { AddProjectScreen } from '../screens/app/AddProjectScreen';
 import { AddTaskScreen } from '../screens/app/AddTaskScreen';
+import { AddVacationScreen } from '../screens/app/AddVacationScreen';
+import { DayDetailScreen } from '../screens/app/DayDetailScreen';
 import { AppointmentDetailScreen } from '../screens/app/AppointmentDetailScreen';
 import { CalendarScreen } from '../screens/app/CalendarScreen';
 import { DailyDigestScreen } from '../screens/app/DailyDigestScreen';
@@ -111,6 +113,16 @@ export function AppNavigator() {
       <Stack.Screen
         name="AddProject"
         component={AddProjectScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="AddVacation"
+        component={AddVacationScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="DayDetail"
+        component={DayDetailScreen}
         options={{ presentation: 'modal' }}
       />
       <Stack.Screen

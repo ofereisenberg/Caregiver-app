@@ -6,7 +6,63 @@
 
 ## Current Status
 
-Multi-circle support fully implemented. A user can now create multiple circles, switch between them in Settings, and invite existing users (via code entry) or new users (via the existing invite flow). All main screen headers show the active circle name.
+Multi-circle support fully implemented. Design for F16 (vacation entries) and collapsible calendar agreed and documented in `docs/designs/design-vacation-calendar.md`. Implementation starts next.
+
+At the start of the implementation session, convert the checklist below to todos and mark each item done as you complete it.
+
+---
+
+## Implementation Plan — Vacation & Collapsible Calendar
+
+### Phase 1 — Database & types
+
+- [ ] Create `vacation` table (id, circle_id, user_id, title, start_date, end_date, with_member_ids uuid[], created_at)
+- [ ] Add RLS: all circle members can read; only owner (user_id) can insert/update/delete
+- [ ] Run `supabase db push` and regenerate TypeScript types
+
+### Phase 2 — Service & hook
+
+- [ ] Create `services/vacations.ts` — getVacationsForCircle, createVacation, updateVacation, deleteVacation
+- [ ] Create `hooks/useVacations.ts` — fetches vacations for active circle, realtime subscription, clean up on unmount
+
+### Phase 3 — Add Vacation screen
+
+- [ ] Create `screens/app/AddVacationScreen.tsx` — title input, start date, end date, "with" multi-select from circle members
+- [ ] Add `AddVacation` to `AppStackParamList` and `AppNavigator`
+- [ ] Wire FAB or "+" button in CalendarScreen to open AddVacationScreen
+
+### Phase 4 — Collapsible calendar
+
+- [ ] Add expand/collapse state to `CalendarScreen`
+- [ ] Implement swipe-up/down gesture to toggle states
+- [ ] Implement swipe-left/right on calendar grid to move months (both states)
+- [ ] Collapsed state: render mini-month grid (M T W T F S S header, week-number left column, colored dots per cell)
+- [ ] Collapsed state: bottom day-event panel with selected day's items; swipe left/right moves day
+
+### Phase 5 — Expanded calendar
+
+- [ ] Expanded state: taller cells showing up to 3 items at 1–2 words each
+- [ ] "+X" overflow badge when a day has more than 3 items
+- [ ] Tapping any day cell opens DayDetailScreen (modal)
+
+### Phase 6 — Vacation rendering in calendar
+
+- [ ] Collapsed: red dot in each day cell within a vacation range
+- [ ] Expanded: full-width red background fill per cell in range; title text only in first cell of range
+
+### Phase 7 — Day Detail modal screen
+
+- [ ] Create `screens/app/DayDetailScreen.tsx` — modal, header with date, lists vacations/appointments/tasks with color labels, view-only
+- [ ] Add `DayDetail` to `AppStackParamList` and `AppNavigator` as modal
+
+### Phase 8 — Vacation assignment warning
+
+- [ ] In `AddTaskScreen`: check if assignee has a vacation covering the selected due date; show warning if so
+- [ ] In `AddAppointmentScreen`: same check for start date range
+
+---
+
+## Previous session work (2026-06-28)
 
 ---
 

@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -454,6 +454,47 @@ export type Database = {
           {
             foreignKeyName: "user_profile_active_circle_id_fkey"
             columns: ["active_circle_id"]
+            isOneToOne: false
+            referencedRelation: "care_circle"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vacations: {
+        Row: {
+          circle_id: string
+          created_at: string
+          end_date: string
+          id: string
+          start_date: string
+          title: string
+          user_id: string
+          with_member_ids: string[]
+        }
+        Insert: {
+          circle_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          start_date: string
+          title: string
+          user_id: string
+          with_member_ids?: string[]
+        }
+        Update: {
+          circle_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          start_date?: string
+          title?: string
+          user_id?: string
+          with_member_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacations_circle_id_fkey"
+            columns: ["circle_id"]
             isOneToOne: false
             referencedRelation: "care_circle"
             referencedColumns: ["id"]

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -266,7 +267,7 @@ export function TaskDetailScreen() {
     : null;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior="padding">
       {/* Back button */}
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
@@ -532,7 +533,7 @@ export function TaskDetailScreen() {
           <Text style={styles.deleteLabel}>Delete task</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
