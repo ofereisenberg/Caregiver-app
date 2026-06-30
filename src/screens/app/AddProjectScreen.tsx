@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -19,6 +18,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { createProject } from '../../services/projects';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -103,7 +103,7 @@ export function AddProjectScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.heading}>New project</Text>
+        <ScaledText style={styles.heading}>New project</ScaledText>
 
         <TextInput
           ref={titleRef}
@@ -132,10 +132,10 @@ export function AddProjectScreen() {
 
         {/* Owner row */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('owner')}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>Owner
-          </Text>
-          <Text style={styles.expandRowValue}>{ownerName}</Text>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Owner
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>{ownerName}</ScaledText>
         </TouchableOpacity>
         {expandedRow === 'owner' && (
           <View style={styles.chipRow}>
@@ -143,7 +143,7 @@ export function AddProjectScreen() {
               style={[styles.chip, ownerId === null && styles.chipSelected]}
               onPress={() => { setOwnerId(null); setExpandedRow(null); }}
             >
-              <Text style={[styles.chipLabel, ownerId === null && styles.chipLabelSelected]}>Unassigned</Text>
+              <ScaledText style={[styles.chipLabel, ownerId === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
             </TouchableOpacity>
             {members.map((member) => {
               const selected = ownerId === member.user_id;
@@ -153,9 +153,9 @@ export function AddProjectScreen() {
                   style={[styles.chip, selected && styles.chipSelected]}
                   onPress={() => { setOwnerId(member.user_id); setExpandedRow(null); }}
                 >
-                  <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+                  <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                     {member.displayName.split(' ')[0]}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               );
             })}
@@ -165,10 +165,10 @@ export function AddProjectScreen() {
 
         {/* Due date row */}
         <TouchableOpacity style={styles.expandRow} onPress={handleWhenPress}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>Due date
-          </Text>
-          <Text style={styles.expandRowValue}>{dueDate ? formatDate(dueDate) : 'None'}</Text>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Due date
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>{dueDate ? formatDate(dueDate) : 'None'}</ScaledText>
         </TouchableOpacity>
         {Platform.OS === 'ios' && expandedRow === 'when' && (
           <DateTimePicker
@@ -185,7 +185,7 @@ export function AddProjectScreen() {
             style={styles.clearRow}
             onPress={() => setDueDate(null)}
           >
-            <Text style={styles.clearLabel}>Remove date</Text>
+            <ScaledText style={styles.clearLabel}>Remove date</ScaledText>
           </TouchableOpacity>
         )}
         <View style={styles.rowDivider} />
@@ -193,8 +193,8 @@ export function AddProjectScreen() {
         {/* Visibility toggle */}
         <View style={styles.toggleRow}>
           <View>
-            <Text style={styles.toggleLabel}>Only me</Text>
-            <Text style={styles.toggleSubLabel}>Hidden from other circle members</Text>
+            <ScaledText style={styles.toggleLabel}>Only me</ScaledText>
+            <ScaledText style={styles.toggleSubLabel}>Hidden from other circle members</ScaledText>
           </View>
           <Switch
             value={onlyMe}
@@ -204,7 +204,7 @@ export function AddProjectScreen() {
           />
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <ScaledText style={styles.errorText}>{error}</ScaledText>}
 
         <TouchableOpacity
           style={[styles.addButton, !canAdd && styles.addButtonDisabled]}
@@ -215,7 +215,7 @@ export function AddProjectScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.addButtonLabel}>Create project</Text>
+            <ScaledText style={styles.addButtonLabel}>Create project</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>

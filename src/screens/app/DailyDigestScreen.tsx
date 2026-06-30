@@ -1,11 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 
 export function DailyDigestScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Daily Digest</Text>
+      <ScaledText style={styles.label}>Daily Digest</ScaledText>
     </View>
   );
 }

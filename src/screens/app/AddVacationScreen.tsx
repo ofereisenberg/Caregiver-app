@@ -5,7 +5,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -19,6 +18,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { createVacation } from '../../services/vacations';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -140,7 +140,7 @@ export function AddVacationScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.heading}>Add vacation</Text>
+        <ScaledText style={styles.heading}>Add vacation</ScaledText>
 
         <TextInput
           ref={titleRef}
@@ -159,9 +159,9 @@ export function AddVacationScreen() {
         <TouchableOpacity style={styles.expandRow} onPress={() => openDatePicker('start')}>
           <View style={styles.rowLeft}>
             <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} style={styles.rowIcon} />
-            <Text style={styles.expandRowLabel}>From</Text>
+            <ScaledText style={styles.expandRowLabel}>From</ScaledText>
           </View>
-          <Text style={styles.expandRowValue}>{formatDate(startDate)}</Text>
+          <ScaledText style={styles.expandRowValue}>{formatDate(startDate)}</ScaledText>
         </TouchableOpacity>
         {Platform.OS === 'ios' && iosDateField === 'start' && (
           <DateTimePicker
@@ -179,9 +179,9 @@ export function AddVacationScreen() {
         <TouchableOpacity style={styles.expandRow} onPress={() => openDatePicker('end')}>
           <View style={styles.rowLeft}>
             <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} style={styles.rowIcon} />
-            <Text style={styles.expandRowLabel}>Until</Text>
+            <ScaledText style={styles.expandRowLabel}>Until</ScaledText>
           </View>
-          <Text style={styles.expandRowValue}>{formatDate(endDate)}</Text>
+          <ScaledText style={styles.expandRowValue}>{formatDate(endDate)}</ScaledText>
         </TouchableOpacity>
         {Platform.OS === 'ios' && iosDateField === 'end' && (
           <DateTimePicker
@@ -201,15 +201,15 @@ export function AddVacationScreen() {
             <TouchableOpacity style={styles.expandRow} onPress={() => setExpandWith((v) => !v)}>
               <View style={styles.rowLeft}>
                 <Ionicons name="people-outline" size={16} color={theme.colors.sage} style={styles.rowIcon} />
-                <Text style={styles.expandRowLabel}>With</Text>
+                <ScaledText style={styles.expandRowLabel}>With</ScaledText>
               </View>
-              <Text style={styles.expandRowValue}>
+              <ScaledText style={styles.expandRowValue}>
                 {withMemberIds.length === 0
                   ? 'Nobody'
                   : withMemberIds.length === 1
                   ? members.find((m) => m.user_id === withMemberIds[0])?.displayName ?? '1 person'
                   : `${withMemberIds.length} people`}
-              </Text>
+              </ScaledText>
             </TouchableOpacity>
             {expandWith && (
               <View style={styles.chipRow}>
@@ -221,9 +221,9 @@ export function AddVacationScreen() {
                       style={[styles.chip, selected && styles.chipSelected]}
                       onPress={() => toggleWithMember(member.user_id)}
                     >
-                      <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+                      <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                         {member.displayName.split(' ')[0]}
-                      </Text>
+                      </ScaledText>
                       {selected && (
                         <Ionicons name="checkmark" size={13} color={theme.colors.sageDark} style={styles.chipCheck} />
                       )}
@@ -236,7 +236,7 @@ export function AddVacationScreen() {
           </>
         )}
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <ScaledText style={styles.errorText}>{error}</ScaledText>}
 
         <TouchableOpacity
           style={[styles.addButton, !canSave && styles.addButtonDisabled]}
@@ -247,7 +247,7 @@ export function AddVacationScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.addButtonLabel}>Save vacation</Text>
+            <ScaledText style={styles.addButtonLabel}>Save vacation</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>

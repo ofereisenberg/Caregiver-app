@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -22,6 +21,7 @@ import { useCircle } from '../../hooks/useCircle';
 import { useProjectList } from '../../hooks/useProjectList';
 import { useVacations } from '../../hooks/useVacations';
 import { createTask } from '../../services/tasks';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -178,7 +178,7 @@ export function AddTaskScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.heading}>What needs doing?</Text>
+        <ScaledText style={styles.heading}>What needs doing?</ScaledText>
 
         {/* Title input */}
         <TextInput
@@ -197,14 +197,14 @@ export function AddTaskScreen() {
 
         {/* Repeat row */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('repeat')}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>Repeat
-          </Text>
-          <Text style={styles.expandRowValue}>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Repeat
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>
             {repeat
               ? REPEAT_OPTIONS.find((o) => o.value === repeat)?.label ?? 'One-off'
               : 'One-off'}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
         {expandedRow === 'repeat' && (
           <View style={styles.chipRow}>
@@ -217,9 +217,9 @@ export function AddTaskScreen() {
                   setExpandedRow(null);
                 }}
               >
-                <Text style={[styles.chipLabel, repeat === opt.value && styles.chipLabelSelected]}>
+                <ScaledText style={[styles.chipLabel, repeat === opt.value && styles.chipLabelSelected]}>
                   {opt.label}
-                </Text>
+                </ScaledText>
               </TouchableOpacity>
             ))}
           </View>
@@ -228,14 +228,14 @@ export function AddTaskScreen() {
 
         {/* Assign row */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('assign')}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>Assign
-          </Text>
-          <Text style={styles.expandRowValue}>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Assign
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>
             {assigneeId
               ? members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Unassigned'
               : 'Unassigned'}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
         {expandedRow === 'assign' && (
           <View style={styles.chipRow}>
@@ -250,9 +250,9 @@ export function AddTaskScreen() {
                     setExpandedRow(null);
                   }}
                 >
-                  <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+                  <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                     {member.displayName.split(' ')[0]}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               );
             })}
@@ -262,12 +262,12 @@ export function AddTaskScreen() {
 
         {/* When row */}
         <TouchableOpacity style={styles.expandRow} onPress={handleWhenPress}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>When
-          </Text>
-          <Text style={styles.expandRowValue}>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>When
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>
             {dueDate ? formatDate(dueDate) : 'No date'}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
         {Platform.OS === 'ios' && expandedRow === 'when' && (
           <DateTimePicker
@@ -282,11 +282,11 @@ export function AddTaskScreen() {
         {dueDate !== null && (
           <View style={styles.timeRangeRow}>
             <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('start')}>
-              <Text style={styles.timePillText}>{startTime ? formatTimeDisplay(startTime) : '–:––'}</Text>
+              <ScaledText style={styles.timePillText}>{startTime ? formatTimeDisplay(startTime) : '–:––'}</ScaledText>
             </TouchableOpacity>
             <Ionicons name="arrow-forward" size={14} color={theme.colors.textMuted} />
             <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('end')}>
-              <Text style={styles.timePillText}>{endTime ? formatTimeDisplay(endTime) : '–:––'}</Text>
+              <ScaledText style={styles.timePillText}>{endTime ? formatTimeDisplay(endTime) : '–:––'}</ScaledText>
             </TouchableOpacity>
             {(startTime !== null || endTime !== null) && (
               <TouchableOpacity onPress={() => { setStartTime(null); setEndTime(null); }} hitSlop={8}>
@@ -310,8 +310,8 @@ export function AddTaskScreen() {
         {/* Only me toggle */}
         <View style={styles.toggleRow}>
           <View>
-            <Text style={styles.toggleLabel}>Only me</Text>
-            <Text style={styles.toggleSubLabel}>Hidden from other circle members</Text>
+            <ScaledText style={styles.toggleLabel}>Only me</ScaledText>
+            <ScaledText style={styles.toggleSubLabel}>Hidden from other circle members</ScaledText>
           </View>
           <Switch
             value={onlyMe}
@@ -326,12 +326,12 @@ export function AddTaskScreen() {
           <>
             <View style={styles.rowDivider} />
             <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('project')}>
-              <Text style={styles.expandRowLabel}>
-                <Text style={styles.expandRowPlus}>+ </Text>Project
-              </Text>
-              <Text style={styles.expandRowValue}>
+              <ScaledText style={styles.expandRowLabel}>
+                <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Project
+              </ScaledText>
+              <ScaledText style={styles.expandRowValue}>
                 {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
-              </Text>
+              </ScaledText>
             </TouchableOpacity>
             {expandedRow === 'project' && (
               <View style={styles.chipRow}>
@@ -339,7 +339,7 @@ export function AddTaskScreen() {
                   style={[styles.chip, projectId === null && styles.chipSelected]}
                   onPress={() => { setProjectId(null); setExpandedRow(null); }}
                 >
-                  <Text style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</Text>
+                  <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</ScaledText>
                 </TouchableOpacity>
                 {projects.filter((p) => p.status !== 'done').map((proj) => (
                   <TouchableOpacity
@@ -347,9 +347,9 @@ export function AddTaskScreen() {
                     style={[styles.chip, projectId === proj.id && styles.chipSelected]}
                     onPress={() => { setProjectId(proj.id); setExpandedRow(null); }}
                   >
-                    <Text style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                    <ScaledText style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
                       {proj.title}
-                    </Text>
+                    </ScaledText>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -357,8 +357,8 @@ export function AddTaskScreen() {
           </>
         )}
 
-        {vacationWarning && <Text style={styles.warningText}>{vacationWarning}</Text>}
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {vacationWarning && <ScaledText style={styles.warningText}>{vacationWarning}</ScaledText>}
+        {error && <ScaledText style={styles.errorText}>{error}</ScaledText>}
 
         {/* Add button */}
         <TouchableOpacity
@@ -370,7 +370,7 @@ export function AddTaskScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.addButtonLabel}>Add task</Text>
+            <ScaledText style={styles.addButtonLabel}>Add task</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>

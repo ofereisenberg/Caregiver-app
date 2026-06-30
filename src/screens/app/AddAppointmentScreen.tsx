@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -23,6 +22,7 @@ import { useProjectList } from '../../hooks/useProjectList';
 import { useVacations } from '../../hooks/useVacations';
 import { getTask } from '../../services/tasks';
 import { createAppointment, getAppointment, updateAppointment } from '../../services/appointments';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -259,12 +259,12 @@ export function AddAppointmentScreen() {
       >
         {sourceTaskTitle && (
           <View style={styles.sourceBanner}>
-            <Text style={styles.sourceBannerLabel}>New appointment</Text>
-            <Text style={styles.sourceBannerTask} numberOfLines={1}>from "{sourceTaskTitle}"</Text>
+            <ScaledText style={styles.sourceBannerLabel}>New appointment</ScaledText>
+            <ScaledText style={styles.sourceBannerTask} numberOfLines={1}>from "{sourceTaskTitle}"</ScaledText>
           </View>
         )}
 
-        <Text style={styles.heading}>{isEditMode ? 'Edit appointment' : 'New appointment'}</Text>
+        <ScaledText style={styles.heading}>{isEditMode ? 'Edit appointment' : 'New appointment'}</ScaledText>
 
         {/* Title */}
         <TextInput
@@ -295,7 +295,7 @@ export function AddAppointmentScreen() {
           {/* All day toggle */}
           <View style={styles.allDayRow}>
             <Ionicons name="time-outline" size={18} color={theme.colors.textMuted} />
-            <Text style={styles.allDayLabel}>All day</Text>
+            <ScaledText style={styles.allDayLabel}>All day</ScaledText>
             <Switch
               value={isFullDay}
               onValueChange={setIsFullDay}
@@ -311,11 +311,11 @@ export function AddAppointmentScreen() {
             {/* Start */}
             <View style={styles.dateTimeCol}>
               <TouchableOpacity onPress={() => setPickerMode('start-date')}>
-                <Text style={styles.pickerDate}>{formatDateDisplay(startDate)}</Text>
+                <ScaledText style={styles.pickerDate}>{formatDateDisplay(startDate)}</ScaledText>
               </TouchableOpacity>
               {!isFullDay && (
                 <TouchableOpacity onPress={() => setPickerMode('start-time')}>
-                  <Text style={styles.pickerTime}>{formatTimeDisplay(startDate)}</Text>
+                  <ScaledText style={styles.pickerTime}>{formatTimeDisplay(startDate)}</ScaledText>
                 </TouchableOpacity>
               )}
             </View>
@@ -325,11 +325,11 @@ export function AddAppointmentScreen() {
             {/* End */}
             <View style={styles.dateTimeCol}>
               <TouchableOpacity onPress={() => setPickerMode('end-date')}>
-                <Text style={styles.pickerDate}>{formatDateDisplay(endDate)}</Text>
+                <ScaledText style={styles.pickerDate}>{formatDateDisplay(endDate)}</ScaledText>
               </TouchableOpacity>
               {!isFullDay && (
                 <TouchableOpacity onPress={() => setPickerMode('end-time')}>
-                  <Text style={styles.pickerTime}>{formatTimeDisplay(endDate)}</Text>
+                  <ScaledText style={styles.pickerTime}>{formatTimeDisplay(endDate)}</ScaledText>
                 </TouchableOpacity>
               )}
             </View>
@@ -340,11 +340,11 @@ export function AddAppointmentScreen() {
 
         {/* Location */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('location')}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>Location
-          </Text>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Location
+          </ScaledText>
           {location.length > 0 && (
-            <Text style={styles.expandRowValue} numberOfLines={1}>{location}</Text>
+            <ScaledText style={styles.expandRowValue} numberOfLines={1}>{location}</ScaledText>
           )}
         </TouchableOpacity>
         {expandedRow === 'location' && (
@@ -363,10 +363,10 @@ export function AddAppointmentScreen() {
 
         {/* Repeat */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('repeat')}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>Repeat
-          </Text>
-          <Text style={styles.expandRowValue}>{recurrenceLabel}</Text>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Repeat
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>{recurrenceLabel}</ScaledText>
         </TouchableOpacity>
         {expandedRow === 'repeat' && (
           <View style={styles.optionList}>
@@ -376,9 +376,9 @@ export function AddAppointmentScreen() {
                 style={[styles.optionRow, recurrence === opt.value && styles.optionRowSelected]}
                 onPress={() => { setRecurrence(opt.value); setExpandedRow(null); }}
               >
-                <Text style={[styles.optionLabel, recurrence === opt.value && styles.optionLabelSelected]}>
+                <ScaledText style={[styles.optionLabel, recurrence === opt.value && styles.optionLabelSelected]}>
                   {opt.label}
-                </Text>
+                </ScaledText>
               </TouchableOpacity>
             ))}
           </View>
@@ -387,10 +387,10 @@ export function AddAppointmentScreen() {
 
         {/* With (assignee) */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('assign')}>
-          <Text style={styles.expandRowLabel}>
-            <Text style={styles.expandRowPlus}>+ </Text>With
-          </Text>
-          <Text style={styles.expandRowValue}>{inviteeLabel}</Text>
+          <ScaledText style={styles.expandRowLabel}>
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>With
+          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>{inviteeLabel}</ScaledText>
         </TouchableOpacity>
         {expandedRow === 'assign' && (
           <View style={styles.chipRow}>
@@ -406,9 +406,9 @@ export function AddAppointmentScreen() {
                       : [...inviteeIds, m.user_id]
                   )}
                 >
-                  <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+                  <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                     {m.displayName.split(' ')[0]}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               );
             })}
@@ -417,7 +417,7 @@ export function AddAppointmentScreen() {
 
         <View style={styles.rowDivider} />
         <View style={styles.visibilityRow}>
-          <Text style={styles.expandRowLabel}>Only me</Text>
+          <ScaledText style={styles.expandRowLabel}>Only me</ScaledText>
           <Switch
             value={visibility === 'private'}
             onValueChange={(v) => setVisibility(v ? 'private' : 'shared')}
@@ -431,12 +431,12 @@ export function AddAppointmentScreen() {
           <>
             <View style={styles.rowDivider} />
             <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('project')}>
-              <Text style={styles.expandRowLabel}>
-                <Text style={styles.expandRowPlus}>+ </Text>Project
-              </Text>
-              <Text style={styles.expandRowValue}>
+              <ScaledText style={styles.expandRowLabel}>
+                <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Project
+              </ScaledText>
+              <ScaledText style={styles.expandRowValue}>
                 {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
-              </Text>
+              </ScaledText>
             </TouchableOpacity>
             {expandedRow === 'project' && (
               <View style={styles.chipRow}>
@@ -444,7 +444,7 @@ export function AddAppointmentScreen() {
                   style={[styles.chip, projectId === null && styles.chipSelected]}
                   onPress={() => { setProjectId(null); setExpandedRow(null); }}
                 >
-                  <Text style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</Text>
+                  <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</ScaledText>
                 </TouchableOpacity>
                 {projects.filter((p) => p.status !== 'done').map((proj) => (
                   <TouchableOpacity
@@ -452,9 +452,9 @@ export function AddAppointmentScreen() {
                     style={[styles.chip, projectId === proj.id && styles.chipSelected]}
                     onPress={() => { setProjectId(proj.id); setExpandedRow(null); }}
                   >
-                    <Text style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                    <ScaledText style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
                       {proj.title}
-                    </Text>
+                    </ScaledText>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -462,8 +462,8 @@ export function AddAppointmentScreen() {
           </>
         )}
 
-        {vacationWarning && <Text style={styles.warningText}>{vacationWarning}</Text>}
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {vacationWarning && <ScaledText style={styles.warningText}>{vacationWarning}</ScaledText>}
+        {error && <ScaledText style={styles.errorText}>{error}</ScaledText>}
 
         <TouchableOpacity
           style={[styles.addButton, !canAdd && styles.addButtonDisabled]}
@@ -473,7 +473,7 @@ export function AddAppointmentScreen() {
         >
           {saving
             ? <ActivityIndicator color={theme.colors.surface} />
-            : <Text style={styles.addButtonLabel}>{isEditMode ? 'Save changes' : 'Add appointment'}</Text>
+            : <ScaledText style={styles.addButtonLabel}>{isEditMode ? 'Save changes' : 'Add appointment'}</ScaledText>
           }
         </TouchableOpacity>
       </ScrollView>

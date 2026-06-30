@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import {
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -19,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Appointment } from '../../services/appointments';
 import { Task } from '../../services/tasks';
 import { Vacation } from '../../services/vacations';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -98,7 +98,7 @@ export function DayDetailScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.dateLabel}>{formatDate(dateKey)}</Text>
+        <ScaledText style={styles.dateLabel}>{formatDate(dateKey)}</ScaledText>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
         </TouchableOpacity>
@@ -107,28 +107,28 @@ export function DayDetailScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {isEmpty && (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>Nothing on this day</Text>
+            <ScaledText style={styles.emptyText}>Nothing on this day</ScaledText>
           </View>
         )}
 
         {/* Vacations */}
         {dayVacations.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: VACATION_COLOR }]}>On vacation</Text>
+            <ScaledText style={[styles.sectionLabel, { color: VACATION_COLOR }]}>On vacation</ScaledText>
             {dayVacations.map((v) => (
               <View key={v.id} style={[styles.card, { backgroundColor: VACATION_BG }]}>
                 <View style={[styles.colorBar, { backgroundColor: VACATION_COLOR }]} />
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{v.title}</Text>
-                  <Text style={[styles.cardMeta, { color: VACATION_COLOR }]}>
+                  <ScaledText style={styles.cardTitle}>{v.title}</ScaledText>
+                  <ScaledText style={[styles.cardMeta, { color: VACATION_COLOR }]}>
                     {formatDateRange(v.start_date, v.end_date)}
-                  </Text>
+                  </ScaledText>
                   {v.with_member_ids.length > 0 && (
-                    <Text style={styles.cardMeta}>
+                    <ScaledText style={styles.cardMeta}>
                       With: {v.with_member_ids
                         .map((id) => members.find((m) => m.user_id === id)?.displayName ?? id)
                         .join(', ')}
-                    </Text>
+                    </ScaledText>
                   )}
                 </View>
               </View>
@@ -139,7 +139,7 @@ export function DayDetailScreen() {
         {/* Appointments */}
         {dayAppointments.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: APPT_COLOR }]}>Appointments</Text>
+            <ScaledText style={[styles.sectionLabel, { color: APPT_COLOR }]}>Appointments</ScaledText>
             {dayAppointments.map((appt) => (
               <TouchableOpacity
                 key={appt.id}
@@ -149,10 +149,10 @@ export function DayDetailScreen() {
               >
                 <View style={[styles.colorBar, { backgroundColor: APPT_COLOR }]} />
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{appt.title}</Text>
-                  <Text style={styles.cardMeta}>{formatApptTime(appt)}</Text>
+                  <ScaledText style={styles.cardTitle}>{appt.title}</ScaledText>
+                  <ScaledText style={styles.cardMeta}>{formatApptTime(appt)}</ScaledText>
                   {appt.location ? (
-                    <Text style={styles.cardMeta}>{appt.location}</Text>
+                    <ScaledText style={styles.cardMeta}>{appt.location}</ScaledText>
                   ) : null}
                 </View>
                 <Ionicons name="chevron-forward" size={14} color={APPT_COLOR} />
@@ -164,7 +164,7 @@ export function DayDetailScreen() {
         {/* Tasks */}
         {dayTasks.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: TASK_COLOR }]}>Tasks due</Text>
+            <ScaledText style={[styles.sectionLabel, { color: TASK_COLOR }]}>Tasks due</ScaledText>
             {dayTasks.map((task) => (
               <TouchableOpacity
                 key={task.id}
@@ -174,9 +174,9 @@ export function DayDetailScreen() {
               >
                 <View style={[styles.colorBar, { backgroundColor: TASK_COLOR }]} />
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{task.title}</Text>
+                  <ScaledText style={styles.cardTitle}>{task.title}</ScaledText>
                   {task.assignee && (
-                    <Text style={styles.cardMeta}>{memberName(task.assignee)}</Text>
+                    <ScaledText style={styles.cardMeta}>{memberName(task.assignee)}</ScaledText>
                   )}
                 </View>
                 <Ionicons name="chevron-forward" size={14} color={TASK_COLOR} />
