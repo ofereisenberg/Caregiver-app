@@ -30,6 +30,19 @@ export async function addProjectNote(
   return { data, error: null };
 }
 
+export async function updateProjectNote(
+  noteId: string,
+  content: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('project_notes')
+    .update({ content })
+    .eq('id', noteId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
 export async function deleteProjectNote(noteId: string): Promise<{ error: string | null }> {
   const { error } = await supabase
     .from('project_notes')

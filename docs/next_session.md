@@ -126,6 +126,12 @@ At the start of the implementation session, convert the checklist below to todos
 
 ---
 
+## To Implement Next Session
+
+- **Auto-generated "What's New" file** — design finalized in `docs/technical/05-android-dev-build-setup.md` under "Planned: Auto-Generated 'What's New' File". `build-release.ps1` should tag the release commit and prepend a raw commit-log section to a new `docs/whats-new.md` on every successful build. Not yet implemented — design only.
+
+---
+
 ## Open Issues
 
 | #  | Description                                                    |

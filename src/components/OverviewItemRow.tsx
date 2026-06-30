@@ -9,7 +9,7 @@ import { DropdownMenuItem } from './DropdownMenu';
 import { Appointment } from '../services/appointments';
 import { Task } from '../services/tasks';
 import { OverviewItem } from '../utils/overviewGrouping';
-import { formatDueLabel, isTaskOverdue } from '../utils/taskGrouping';
+import { isTaskOverdue } from '../utils/taskGrouping';
 
 const AVATAR_COLORS = [
   theme.colors.sageTint,
@@ -39,13 +39,20 @@ function formatApptMeta(appt: Appointment): string {
   return `${dateStr} · ${startTime} – ${endTime}`;
 }
 
-function formatTaskTimeMeta(task: Task): string | null {
-  if (!task.start_time) return null;
+function formatTaskMeta(task: Task): string | null {
+  if (!task.due_date) return null;
+  const dateStr = new Date(task.due_date).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+  if (!task.start_time) return dateStr;
   const [sh, sm] = task.start_time.split(':').map(Number);
   const start = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-  if (!task.end_time) return start;
+  if (!task.end_time) return `${dateStr} · ${start}`;
   const [eh, em] = task.end_time.split(':').map(Number);
-  return `${start} – ${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+  const end = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+  return `${dateStr} · ${start} – ${end}`;
 }
 
 function ItemMenu({ items }: { items: DropdownMenuItem[] }) {
@@ -98,8 +105,7 @@ export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComple
 
   const task = item.data;
   const overdue = isTaskOverdue(task.due_date);
-  const dueLabel = formatDueLabel(task.due_date);
-  const timeMeta = formatTaskTimeMeta(task);
+  const taskMeta = formatTaskMeta(task);
   const member = task.assignee ? memberMap.get(task.assignee) : null;
   const idx = member?.index ?? 0;
   const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
@@ -131,11 +137,8 @@ export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComple
               <ScaledText style={styles.overdueBadgeText}>Overdue</ScaledText>
             </View>
           )}
-          {dueLabel !== '' && (
-            <ScaledText style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{dueLabel}</ScaledText>
-          )}
-          {timeMeta !== null && (
-            <ScaledText style={styles.timeMeta}>{timeMeta}</ScaledText>
+          {taskMeta !== null && (
+            <ScaledText style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{taskMeta}</ScaledText>
           )}
           {!!task.recurrence && (
             <View style={styles.repeatsBadge}>
@@ -271,11 +274,6 @@ const styles = StyleSheet.create({
   },
   dueLabelOverdue: {
     color: theme.colors.overdueFg,
-  },
-  timeMeta: {
-    fontSize: theme.fontSize.small,
-    fontFamily: theme.fontFamily.sans,
-    color: theme.colors.textMuted,
   },
   repeatsBadge: {
     borderWidth: 1,

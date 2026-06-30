@@ -6,6 +6,7 @@ import {
   deleteProjectNote,
   getProjectNotes,
   ProjectNote,
+  updateProjectNote,
 } from '../services/projectNotes';
 
 interface UseProjectNotesResult {
@@ -14,6 +15,7 @@ interface UseProjectNotesResult {
   error: string | null;
   refresh: () => Promise<void>;
   addNote: (content: string) => Promise<string | null>;
+  editNote: (noteId: string, content: string) => Promise<string | null>;
   removeNote: (noteId: string) => Promise<void>;
 }
 
@@ -65,11 +67,21 @@ export function useProjectNotes(
     return null;
   }, [projectId, circleId, userId]);
 
+  const editNote = useCallback(async (noteId: string, content: string): Promise<string | null> => {
+    setNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, content } : n));
+    const { error: editError } = await updateProjectNote(noteId, content);
+    if (editError) {
+      await fetchRef.current();
+      return editError;
+    }
+    return null;
+  }, []);
+
   const removeNote = useCallback(async (noteId: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
     const { error: delError } = await deleteProjectNote(noteId);
     if (delError) await fetchRef.current();
   }, []);
 
-  return { notes, loading, error, refresh: fetch, addNote, removeNote };
+  return { notes, loading, error, refresh: fetch, addNote, editNote, removeNote };
 }

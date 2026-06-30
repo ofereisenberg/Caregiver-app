@@ -228,6 +228,40 @@ For now, same-WiFi testing is the fastest path. Set up EAS when you're ready for
 
 ---
 
+## Planned: Auto-Generated "What's New" File (not yet implemented)
+
+**Goal:** after every successful release build, automatically collect what changed since the last build so it's easy to write a short update for family members — without digging through git log by hand.
+
+### Mechanism
+
+- After a successful `build-release.ps1` run (after the APK is copied to `releases/v{version}/`, before the "Done" banner), the script runs `git tag "v$NewVersion"` at HEAD — no prompt, no manual step.
+- To find "what changed," it looks up the previous tag with `git describe --tags --abbrev=0` (run *before* creating the new tag). No prior tag → fall back to the full log.
+- Collects commits since that tag: `git log <prevTag>..HEAD --no-merges --pretty=format:"- %s"`.
+
+### Output file
+
+- New file: `docs/whats-new.md`.
+- Script prepends a new section at the top (newest first):
+
+  ```text
+  ## v1.2.0 — 2026-07-15
+
+  - Add multi-circle support — create, join, and switch between circles
+  - Fix keyboard covering input fields on task/appointment screens
+  - ...
+  ```
+
+- This is a **raw commit dump**, not family-friendly prose — you hand-edit/extract from it into the actual message you send. Decided against an AI-rewrite step or a filtered/curated dump to keep the script simple and deterministic; revisit if the raw dump turns out too noisy in practice.
+
+**Tag collision handling (needs deciding during implementation):** if `v$NewVersion` already exists (e.g. re-running a build for the same version after a failed attempt), skip re-tagging with a warning rather than silently moving the tag.
+
+### Implementation touches
+
+- `build-release.ps1` — add the tagging + log-collection + file-prepend step
+- New file `docs/whats-new.md` — created on first run
+
+---
+
 ## Infrastructure reference
 
 | Item | Value |

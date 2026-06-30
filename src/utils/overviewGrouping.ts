@@ -21,7 +21,7 @@ function effectiveSortMs(item: OverviewItem): number {
   }
   const task = item.data;
   if (!task.due_date) return Infinity;
-  const base = new Date(task.due_date + 'T00:00:00').getTime();
+  const base = new Date(task.due_date).getTime();
   if (!task.start_time) return base;
   const [h, m] = task.start_time.split(':').map(Number);
   return base + h * 3_600_000 + m * 60_000;
