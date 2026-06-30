@@ -23,6 +23,7 @@ import { useVacations } from '../../hooks/useVacations';
 import { Appointment } from '../../services/appointments';
 import { Task } from '../../services/tasks';
 import { Vacation } from '../../services/vacations';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -298,7 +299,7 @@ export function CalendarScreen() {
           >
             <Ionicons name="chevron-back" size={18} color={theme.colors.sage} />
           </TouchableOpacity>
-          <Text style={styles.expandedMonthLabel}>{monthLabel}</Text>
+          <ScaledText style={styles.expandedMonthLabel}>{monthLabel}</ScaledText>
           <TouchableOpacity
             onPress={() => setCurrentMonth((m) => { const n = m + 1; if (n > 11) { setCurrentYear((y) => y + 1); return 0; } return n; })}
             hitSlop={8}
@@ -414,12 +415,12 @@ export function CalendarScreen() {
         <View style={styles.vacationRow}>
           <View style={styles.vacationMarker} />
           <View style={styles.rowContent}>
-            <Text style={styles.rowTitle}>{item.data.title}</Text>
-            <Text style={styles.rowMeta}>
+            <ScaledText style={styles.rowTitle}>{item.data.title}</ScaledText>
+            <ScaledText style={styles.rowMeta}>
               {new Date(item.data.start_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
               {' – '}
               {new Date(item.data.end_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-            </Text>
+            </ScaledText>
           </View>
         </View>
       );
@@ -436,8 +437,8 @@ export function CalendarScreen() {
         >
           <View style={styles.apptMarker} />
           <View style={styles.rowContent}>
-            <Text style={styles.rowTitle}>{appt.title}</Text>
-            <Text style={styles.rowMeta}>{formatApptTime(appt)}</Text>
+            <ScaledText style={styles.rowTitle}>{appt.title}</ScaledText>
+            <ScaledText style={styles.rowMeta}>{formatApptTime(appt)}</ScaledText>
             {projectName && (
               <TouchableOpacity
                 style={styles.projectTag}
@@ -445,7 +446,7 @@ export function CalendarScreen() {
                 hitSlop={4}
               >
                 <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
-                <Text style={styles.projectTagText}>{projectName}</Text>
+                <ScaledText style={styles.projectTagText}>{projectName}</ScaledText>
               </TouchableOpacity>
             )}
           </View>
@@ -465,8 +466,8 @@ export function CalendarScreen() {
       >
         <View style={styles.taskMarker} />
         <View style={styles.rowContent}>
-          <Text style={styles.rowTitle}>{task.title}</Text>
-          {name && <Text style={styles.rowMeta}>{name}</Text>}
+          <ScaledText style={styles.rowTitle}>{task.title}</ScaledText>
+          {name && <ScaledText style={styles.rowMeta}>{name}</ScaledText>}
           {projectName && (
             <TouchableOpacity
               style={styles.projectTag}
@@ -474,7 +475,7 @@ export function CalendarScreen() {
               hitSlop={4}
             >
               <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
-              <Text style={styles.projectTagText}>{projectName}</Text>
+              <ScaledText style={styles.projectTagText}>{projectName}</ScaledText>
             </TouchableOpacity>
           )}
         </View>
@@ -491,8 +492,8 @@ export function CalendarScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.circleName}>{circle?.name ?? 'Care Circle'}</Text>
-          <Text style={styles.screenTitle}>Calendar</Text>
+          <ScaledText style={styles.circleName}>{circle?.name ?? 'Care Circle'}</ScaledText>
+          <ScaledText style={styles.screenTitle}>Calendar</ScaledText>
         </View>
         <TouchableOpacity
           style={styles.avatar}
@@ -511,9 +512,9 @@ export function CalendarScreen() {
           size={14}
           color={theme.colors.textMuted}
         />
-        <Text style={styles.modeHint}>
+        <ScaledText style={styles.modeHint}>
           {calendarMode === 'collapsed' ? 'Expand' : 'Collapse'}
-        </Text>
+        </ScaledText>
       </View>
 
       {calendarMode === 'collapsed' ? (
@@ -535,14 +536,14 @@ export function CalendarScreen() {
 
           {/* Day-event panel */}
           <View style={styles.agendaHeader} {...dayPanelPan.panHandlers}>
-            <Text style={styles.agendaDate}>
+            <ScaledText style={styles.agendaDate}>
               {selectedDay === today ? 'Today' : formatAgendaDate(selectedDay)}
-            </Text>
+            </ScaledText>
           </View>
 
           {selectedDayItems.length === 0 ? (
             <View style={styles.empty} {...dayPanelPan.panHandlers}>
-              <Text style={styles.emptyText}>Nothing on this day</Text>
+              <ScaledText style={styles.emptyText}>Nothing on this day</ScaledText>
             </View>
           ) : (
             <FlatList
@@ -589,7 +590,7 @@ export function CalendarScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} />
             </View>
-            <Text style={styles.fabMenuLabel}>Appointment</Text>
+            <ScaledText style={styles.fabMenuLabel}>Appointment</ScaledText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -600,7 +601,7 @@ export function CalendarScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="airplane-outline" size={16} color={theme.colors.sage} />
             </View>
-            <Text style={styles.fabMenuLabel}>Vacation</Text>
+            <ScaledText style={styles.fabMenuLabel}>Vacation</ScaledText>
           </TouchableOpacity>
         </View>
       )}

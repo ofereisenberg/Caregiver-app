@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -23,6 +22,7 @@ import { useProjectList } from '../../hooks/useProjectList';
 import { useTask } from '../../hooks/useTask';
 import { completeTask, deleteTask, updateTask } from '../../services/tasks';
 import { formatDueLabel, isTaskOverdue } from '../../utils/taskGrouping';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -271,7 +271,7 @@ export function TaskDetailScreen() {
       {/* Back button */}
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <Text style={styles.backLabel}>Tasks</Text>
+        <ScaledText style={styles.backLabel}>Tasks</ScaledText>
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -307,7 +307,7 @@ export function TaskDetailScreen() {
             </View>
           ) : (
             <TouchableOpacity onPress={startEditTitle} style={styles.titleTouchable}>
-              <Text style={styles.title}>{task.title}</Text>
+              <ScaledText style={styles.title}>{task.title}</ScaledText>
             </TouchableOpacity>
           )}
         </View>
@@ -317,11 +317,11 @@ export function TaskDetailScreen() {
           <View style={styles.dueBadgeRow}>
             {overdue && (
               <View style={styles.overdueBadge}>
-                <Text style={styles.overdueBadgeText}>Overdue</Text>
+                <ScaledText style={styles.overdueBadgeText}>Overdue</ScaledText>
               </View>
             )}
             {dueLabel !== '' && (
-              <Text style={[styles.dueText, overdue && styles.dueTextOverdue]}>{dueLabel}</Text>
+              <ScaledText style={[styles.dueText, overdue && styles.dueTextOverdue]}>{dueLabel}</ScaledText>
             )}
           </View>
         )}
@@ -330,9 +330,9 @@ export function TaskDetailScreen() {
         <View style={styles.fieldCard}>
           {/* Assignee */}
           <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('assignee')}>
-            <Text style={styles.fieldLabel}>Assignee</Text>
+            <ScaledText style={styles.fieldLabel}>Assignee</ScaledText>
             <View style={styles.fieldValueRow}>
-              <Text style={styles.fieldValue}>{assigneeName ?? 'Unassigned'}</Text>
+              <ScaledText style={styles.fieldValue}>{assigneeName ?? 'Unassigned'}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </View>
           </TouchableOpacity>
@@ -342,7 +342,7 @@ export function TaskDetailScreen() {
                 style={[styles.chip, assigneeId === null && styles.chipSelected]}
                 onPress={() => changeAssignee(null)}
               >
-                <Text style={[styles.chipLabel, assigneeId === null && styles.chipLabelSelected]}>Unassigned</Text>
+                <ScaledText style={[styles.chipLabel, assigneeId === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
               </TouchableOpacity>
               {members.map((m) => (
                 <TouchableOpacity
@@ -350,9 +350,9 @@ export function TaskDetailScreen() {
                   style={[styles.chip, assigneeId === m.user_id && styles.chipSelected]}
                   onPress={() => changeAssignee(m.user_id)}
                 >
-                  <Text style={[styles.chipLabel, assigneeId === m.user_id && styles.chipLabelSelected]}>
+                  <ScaledText style={[styles.chipLabel, assigneeId === m.user_id && styles.chipLabelSelected]}>
                     {m.displayName.split(' ')[0]}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -361,9 +361,9 @@ export function TaskDetailScreen() {
 
           {/* Repeat */}
           <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('repeat')}>
-            <Text style={styles.fieldLabel}>Repeat</Text>
+            <ScaledText style={styles.fieldLabel}>Repeat</ScaledText>
             <View style={styles.fieldValueRow}>
-              <Text style={styles.fieldValue}>{repeatLabel(repeat)}</Text>
+              <ScaledText style={styles.fieldValue}>{repeatLabel(repeat)}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </View>
           </TouchableOpacity>
@@ -375,9 +375,9 @@ export function TaskDetailScreen() {
                   style={[styles.chip, repeat === opt.value && styles.chipSelected]}
                   onPress={() => changeRepeat(opt.value)}
                 >
-                  <Text style={[styles.chipLabel, repeat === opt.value && styles.chipLabelSelected]}>
+                  <ScaledText style={[styles.chipLabel, repeat === opt.value && styles.chipLabelSelected]}>
                     {opt.label}
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -386,9 +386,9 @@ export function TaskDetailScreen() {
 
           {/* When */}
           <TouchableOpacity style={styles.fieldRow} onPress={handleWhenPress}>
-            <Text style={styles.fieldLabel}>When</Text>
+            <ScaledText style={styles.fieldLabel}>When</ScaledText>
             <View style={styles.fieldValueRow}>
-              <Text style={styles.fieldValue}>{dueDate ? formatDueLabel(dueDate.toISOString().split('T')[0]) : 'No date'}</Text>
+              <ScaledText style={styles.fieldValue}>{dueDate ? formatDueLabel(dueDate.toISOString().split('T')[0]) : 'No date'}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </View>
           </TouchableOpacity>
@@ -403,11 +403,11 @@ export function TaskDetailScreen() {
           {dueDate !== null && (
             <View style={styles.timeRangeRow}>
               <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('start')}>
-                <Text style={styles.timePillText}>{startTime ? formatTimeDisplay(startTime) : '–:––'}</Text>
+                <ScaledText style={styles.timePillText}>{startTime ? formatTimeDisplay(startTime) : '–:––'}</ScaledText>
               </TouchableOpacity>
               <Ionicons name="arrow-forward" size={14} color={theme.colors.textMuted} />
               <TouchableOpacity style={styles.timePill} onPress={() => handleTimePress('end')}>
-                <Text style={styles.timePillText}>{endTime ? formatTimeDisplay(endTime) : '–:––'}</Text>
+                <ScaledText style={styles.timePillText}>{endTime ? formatTimeDisplay(endTime) : '–:––'}</ScaledText>
               </TouchableOpacity>
               {(startTime !== null || endTime !== null) && (
                 <TouchableOpacity onPress={handleClearTime} hitSlop={8}>
@@ -428,14 +428,14 @@ export function TaskDetailScreen() {
           )}
           {dueDate !== null && (
             <TouchableOpacity style={styles.clearDateRow} onPress={handleClearDate}>
-              <Text style={styles.clearDateLabel}>Remove date</Text>
+              <ScaledText style={styles.clearDateLabel}>Remove date</ScaledText>
             </TouchableOpacity>
           )}
           <View style={styles.rowDivider} />
 
           {/* Visibility */}
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Only me</Text>
+            <ScaledText style={styles.fieldLabel}>Only me</ScaledText>
             <Switch
               value={visibility === 'private'}
               onValueChange={changeVisibility}
@@ -449,11 +449,11 @@ export function TaskDetailScreen() {
             <>
               <View style={styles.rowDivider} />
               <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('project')}>
-                <Text style={styles.fieldLabel}>Project</Text>
+                <ScaledText style={styles.fieldLabel}>Project</ScaledText>
                 <View style={styles.fieldValueRow}>
-                  <Text style={styles.fieldValue}>
+                  <ScaledText style={styles.fieldValue}>
                     {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
-                  </Text>
+                  </ScaledText>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
                 </View>
               </TouchableOpacity>
@@ -463,7 +463,7 @@ export function TaskDetailScreen() {
                     style={[styles.chip, projectId === null && styles.chipSelected]}
                     onPress={() => changeProject(null)}
                   >
-                    <Text style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</Text>
+                    <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</ScaledText>
                   </TouchableOpacity>
                   {projects.map((proj) => (
                     <TouchableOpacity
@@ -471,9 +471,9 @@ export function TaskDetailScreen() {
                       style={[styles.chip, projectId === proj.id && styles.chipSelected]}
                       onPress={() => changeProject(proj.id)}
                     >
-                      <Text style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                      <ScaledText style={[styles.chipLabel, projectId === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
                         {proj.title}
-                      </Text>
+                      </ScaledText>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -485,9 +485,9 @@ export function TaskDetailScreen() {
                   onPress={() => navigation.navigate('ProjectDetail', { projectId: projectId! })}
                 >
                   <Ionicons name="folder-outline" size={14} color={theme.colors.sageDark} />
-                  <Text style={styles.projectLinkLabel}>
+                  <ScaledText style={styles.projectLinkLabel}>
                     View project
-                  </Text>
+                  </ScaledText>
                 </TouchableOpacity>
               )}
             </>
@@ -495,7 +495,7 @@ export function TaskDetailScreen() {
         </View>
 
         {/* Progress note */}
-        <Text style={styles.sectionHeader}>Progress &amp; updates</Text>
+        <ScaledText style={styles.sectionHeader}>Progress &amp; updates</ScaledText>
         <View style={styles.noteCard}>
           <TextInput
             style={styles.noteInput}
@@ -515,7 +515,7 @@ export function TaskDetailScreen() {
           >
             {savingNote
               ? <ActivityIndicator color={theme.colors.surface} size="small" />
-              : <Text style={styles.saveNoteLabel}>Save note</Text>
+              : <ScaledText style={styles.saveNoteLabel}>Save note</ScaledText>
             }
           </TouchableOpacity>
         )}
@@ -526,11 +526,11 @@ export function TaskDetailScreen() {
           onPress={() => navigation.navigate('AddAppointment', { taskId })}
         >
           <Ionicons name="calendar-outline" size={18} color={theme.colors.sageDark} />
-          <Text style={styles.appointmentLabel}>Make an appointment</Text>
+          <ScaledText style={styles.appointmentLabel}>Make an appointment</ScaledText>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.deleteLabel}>Delete task</Text>
+          <ScaledText style={styles.deleteLabel}>Delete task</ScaledText>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

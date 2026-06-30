@@ -18,6 +18,7 @@ import { useProjectList } from '../../hooks/useProjectList';
 import { useAppointment } from '../../hooks/useAppointment';
 import { deleteAppointment, updateAppointment } from '../../services/appointments';
 import { completeTask } from '../../services/tasks';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -101,7 +102,7 @@ export function AppointmentDetailScreen() {
       <View style={styles.navRow}>
         <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-          <Text style={styles.backLabel}>Back</Text>
+          <ScaledText style={styles.backLabel}>Back</ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.editButton}
@@ -116,35 +117,35 @@ export function AppointmentDetailScreen() {
           <View style={styles.apptIcon}>
             <Ionicons name="calendar" size={18} color={theme.colors.sage} />
           </View>
-          <Text style={styles.title}>{appointment.title}</Text>
+          <ScaledText style={styles.title}>{appointment.title}</ScaledText>
         </View>
-        <Text style={styles.dateText}>
+        <ScaledText style={styles.dateText}>
           {formatWhen(appointment.starts_at, appointment.ends_at, appointment.is_full_day)}
-        </Text>
+        </ScaledText>
         {appointment.details ? (
-          <Text style={styles.detailsText}>{appointment.details}</Text>
+          <ScaledText style={styles.detailsText}>{appointment.details}</ScaledText>
         ) : null}
 
         <View style={styles.fieldCard}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>With</Text>
+            <ScaledText style={styles.fieldLabel}>With</ScaledText>
             <View style={styles.fieldValueRow}>
               {inviteeNames.map((name) => (
                 <View key={name} style={styles.assigneeAvatar}>
                   <Text style={styles.assigneeAvatarText}>{name.charAt(0).toUpperCase()}</Text>
                 </View>
               ))}
-              <Text style={styles.fieldValue}>
+              <ScaledText style={styles.fieldValue}>
                 {inviteeNames.length > 0 ? inviteeNames.join(', ') : 'Nobody'}
-              </Text>
+              </ScaledText>
             </View>
           </View>
           {appointment.location ? (
             <>
               <View style={styles.rowDivider} />
               <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>Location</Text>
-                <Text style={styles.fieldValue} numberOfLines={2}>{appointment.location}</Text>
+                <ScaledText style={styles.fieldLabel}>Location</ScaledText>
+                <ScaledText style={styles.fieldValue} numberOfLines={2}>{appointment.location}</ScaledText>
               </View>
             </>
           ) : null}
@@ -152,29 +153,29 @@ export function AppointmentDetailScreen() {
             <>
               <View style={styles.rowDivider} />
               <View style={styles.fieldRow}>
-                <Text style={styles.fieldLabel}>Repeat</Text>
-                <Text style={styles.fieldValue}>{recurrenceLabel}</Text>
+                <ScaledText style={styles.fieldLabel}>Repeat</ScaledText>
+                <ScaledText style={styles.fieldValue}>{recurrenceLabel}</ScaledText>
               </View>
             </>
           ) : null}
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Visibility</Text>
-            <Text style={styles.fieldValue}>
+            <ScaledText style={styles.fieldLabel}>Visibility</ScaledText>
+            <ScaledText style={styles.fieldValue}>
               {appointment.visibility === 'private' ? 'Only me' : 'Shared'}
-            </Text>
+            </ScaledText>
           </View>
           {projects.length > 0 && (
             <>
               <View style={styles.rowDivider} />
               <TouchableOpacity style={styles.fieldRow} onPress={() => setProjectPickerOpen((v) => !v)}>
-                <Text style={styles.fieldLabel}>Project</Text>
+                <ScaledText style={styles.fieldLabel}>Project</ScaledText>
                 <View style={styles.fieldValueRow}>
-                  <Text style={styles.fieldValue}>
+                  <ScaledText style={styles.fieldValue}>
                     {appointment.project_id
                       ? (projects.find((p) => p.id === appointment.project_id)?.title ?? 'None')
                       : 'None'}
-                  </Text>
+                  </ScaledText>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
                 </View>
               </TouchableOpacity>
@@ -184,7 +185,7 @@ export function AppointmentDetailScreen() {
                     style={[styles.chip, !appointment.project_id && styles.chipSelected]}
                     onPress={() => handleChangeProject(null)}
                   >
-                    <Text style={[styles.chipLabel, !appointment.project_id && styles.chipLabelSelected]}>None</Text>
+                    <ScaledText style={[styles.chipLabel, !appointment.project_id && styles.chipLabelSelected]}>None</ScaledText>
                   </TouchableOpacity>
                   {projects.map((proj) => (
                     <TouchableOpacity
@@ -192,9 +193,9 @@ export function AppointmentDetailScreen() {
                       style={[styles.chip, appointment.project_id === proj.id && styles.chipSelected]}
                       onPress={() => handleChangeProject(proj.id)}
                     >
-                      <Text style={[styles.chipLabel, appointment.project_id === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
+                      <ScaledText style={[styles.chipLabel, appointment.project_id === proj.id && styles.chipLabelSelected]} numberOfLines={1}>
                         {proj.title}
-                      </Text>
+                      </ScaledText>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -205,7 +206,7 @@ export function AppointmentDetailScreen() {
                   onPress={() => navigation.navigate('ProjectDetail', { projectId: appointment.project_id! })}
                 >
                   <Ionicons name="folder-outline" size={14} color={theme.colors.sageDark} />
-                  <Text style={styles.projectLinkLabel}>View project</Text>
+                  <ScaledText style={styles.projectLinkLabel}>View project</ScaledText>
                 </TouchableOpacity>
               )}
             </>
@@ -213,9 +214,9 @@ export function AppointmentDetailScreen() {
         </View>
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>Prep tasks</Text>
+          <ScaledText style={styles.sectionHeader}>Prep tasks</ScaledText>
           {prepTasks.length > 0 && (
-            <Text style={styles.prepCount}>{completedCount} of {prepTasks.length} ready</Text>
+            <ScaledText style={styles.prepCount}>{completedCount} of {prepTasks.length} ready</ScaledText>
           )}
         </View>
 
@@ -234,9 +235,9 @@ export function AppointmentDetailScreen() {
               >
                 {task.completed && <Ionicons name="checkmark" size={14} color={theme.colors.surface} />}
               </TouchableOpacity>
-              <Text style={[styles.prepTitle, task.completed && styles.prepTitleDone]}>
+              <ScaledText style={[styles.prepTitle, task.completed && styles.prepTitleDone]}>
                 {task.title}
-              </Text>
+              </ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </TouchableOpacity>
           ))}
@@ -245,12 +246,12 @@ export function AppointmentDetailScreen() {
             onPress={() => navigation.navigate('AddTask', { parentAppointmentId: appointmentId })}
           >
             <Ionicons name="add-circle-outline" size={20} color={theme.colors.sage} />
-            <Text style={styles.addPrepLabel}>Add a prep task</Text>
+            <ScaledText style={styles.addPrepLabel}>Add a prep task</ScaledText>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.deleteLabel}>Delete appointment</Text>
+          <ScaledText style={styles.deleteLabel}>Delete appointment</ScaledText>
         </TouchableOpacity>
       </ScrollView>
     </View>

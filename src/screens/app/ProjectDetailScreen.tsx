@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +24,7 @@ import { deleteProject, deleteProjectAndItems, updateProject } from '../../servi
 import { ProjectNote } from '../../services/projectNotes';
 import { uncompleteTask, Task } from '../../services/tasks';
 import { Appointment } from '../../services/appointments';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -88,7 +88,7 @@ export function ProjectDetailScreen() {
   const { session } = useAuth();
   const { circle, members } = useCircle();
   const { project, loading, refresh, handleCompleteTask } = useProject(projectId);
-  const { notes, addNote, removeNote } = useProjectNotes(
+  const { notes, addNote, editNote, removeNote } = useProjectNotes(
     projectId,
     circle?.id ?? null,
     session?.user.id ?? null,
@@ -96,6 +96,9 @@ export function ProjectDetailScreen() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('active');
   const [draftNote, setDraftNote] = useState('');
   const [submittingNote, setSubmittingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const insets = useSafeAreaInsets();
 
   useFocusEffect(
@@ -163,8 +166,15 @@ export function ProjectDetailScreen() {
 
   function handleLongPressNote(note: ProjectNote) {
     if (note.created_by !== session?.user.id) return;
-    Alert.alert('Delete note', 'Remove this note?', [
+    Alert.alert('Note', undefined, [
       { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Edit',
+        onPress: () => {
+          setEditText(note.content);
+          setEditingNoteId(note.id);
+        },
+      },
       { text: 'Delete', style: 'destructive', onPress: () => removeNote(note.id) },
     ]);
   }
@@ -233,8 +243,8 @@ export function ProjectDetailScreen() {
             <Ionicons name="calendar-outline" size={15} color={theme.colors.sage} />
           </View>
           <View style={styles.itemContent}>
-            <Text style={styles.itemTitle} numberOfLines={2}>{appt.title}</Text>
-            <Text style={styles.itemMeta}>{formatApptTime(appt)}</Text>
+            <ScaledText style={styles.itemTitle} numberOfLines={2}>{appt.title}</ScaledText>
+            <ScaledText style={styles.itemMeta}>{formatApptTime(appt)}</ScaledText>
           </View>
           <Ionicons name="chevron-forward" size={15} color={theme.colors.textHairline} />
         </TouchableOpacity>
@@ -259,11 +269,11 @@ export function ProjectDetailScreen() {
             : <View style={styles.checkboxInner} />}
         </TouchableOpacity>
         <View style={styles.itemContent}>
-          <Text style={[styles.itemTitle, task.completed && styles.itemTitleDone]} numberOfLines={2}>
+          <ScaledText style={[styles.itemTitle, task.completed && styles.itemTitleDone]} numberOfLines={2}>
             {task.title}
-          </Text>
+          </ScaledText>
           {task.due_date && (
-            <Text style={styles.itemMeta}>Due {formatDue(task.due_date)}</Text>
+            <ScaledText style={styles.itemMeta}>Due {formatDue(task.due_date)}</ScaledText>
           )}
         </View>
         {task.assignee && (
@@ -281,6 +291,58 @@ export function ProjectDetailScreen() {
   function renderNote({ item }: { item: ProjectNote }) {
     const authorName = memberMap.get(item.created_by) ?? 'Unknown';
     const isOwn = item.created_by === session?.user.id;
+    const isEditing = editingNoteId === item.id;
+
+    const noteHeader = (
+      <View style={styles.noteHeader}>
+        <ScaledText style={styles.noteAuthor}>{authorName}</ScaledText>
+        <ScaledText style={styles.noteTime}>{formatNoteTime(item.created_at)}</ScaledText>
+      </View>
+    );
+
+    if (isEditing) {
+      return (
+        <View style={styles.noteRow}>
+          <View style={styles.noteAvatar}>
+            <Text style={styles.noteAvatarText}>{authorName.charAt(0).toUpperCase()}</Text>
+          </View>
+          <View style={styles.noteContent}>
+            {noteHeader}
+            <TextInput
+              style={styles.noteEditInput}
+              value={editText}
+              onChangeText={setEditText}
+              multiline
+              autoFocus
+              textAlignVertical="top"
+            />
+            <View style={styles.noteEditActions}>
+              <TouchableOpacity onPress={() => setEditingNoteId(null)} hitSlop={8}>
+                <ScaledText style={styles.noteEditCancel}>Cancel</ScaledText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  const trimmed = editText.trim();
+                  if (!trimmed || savingEdit) return;
+                  setSavingEdit(true);
+                  await editNote(item.id, trimmed);
+                  setSavingEdit(false);
+                  setEditingNoteId(null);
+                }}
+                disabled={!editText.trim() || savingEdit}
+                hitSlop={8}
+              >
+                {savingEdit
+                  ? <ActivityIndicator size="small" color={theme.colors.sage} />
+                  : <ScaledText style={styles.noteEditSave}>Save</ScaledText>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <TouchableOpacity
         style={styles.noteRow}
@@ -289,14 +351,11 @@ export function ProjectDetailScreen() {
         delayLongPress={400}
       >
         <View style={styles.noteAvatar}>
-          <Text style={styles.noteAvatarText}>{authorName.charAt(0).toUpperCase()}</Text>
+          <ScaledText style={styles.noteAvatarText}>{authorName.charAt(0).toUpperCase()}</ScaledText>
         </View>
         <View style={styles.noteContent}>
-          <View style={styles.noteHeader}>
-            <Text style={styles.noteAuthor}>{authorName}</Text>
-            <Text style={styles.noteTime}>{formatNoteTime(item.created_at)}</Text>
-          </View>
-          <Text style={styles.noteText}>{item.content}</Text>
+          {noteHeader}
+          <ScaledText style={styles.noteText}>{item.content}</ScaledText>
         </View>
       </TouchableOpacity>
     );
@@ -305,17 +364,17 @@ export function ProjectDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
     >
       {/* Back */}
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <Text style={styles.backLabel}>Projects</Text>
+        <ScaledText style={styles.backLabel}>Projects</ScaledText>
       </TouchableOpacity>
 
       {/* Project header */}
       <View style={styles.projectHeader}>
-        <Text style={styles.projectTitle}>{project.title}</Text>
+        <ScaledText style={styles.projectTitle}>{project.title}</ScaledText>
 
         <View style={styles.projectMeta}>
           <TouchableOpacity
@@ -323,16 +382,16 @@ export function ProjectDetailScreen() {
             onPress={handleChangeStatus}
             activeOpacity={0.7}
           >
-            <Text style={[styles.statusBadgeText, { color: colors.fg }]}>
+            <ScaledText style={[styles.statusBadgeText, { color: colors.fg }]}>
               {STATUS_LABEL[project.status] ?? project.status}
-            </Text>
+            </ScaledText>
           </TouchableOpacity>
-          {ownerName && <Text style={styles.metaText}>{ownerName}</Text>}
-          {dueStr && <Text style={styles.metaText}>Due {dueStr}</Text>}
+          {ownerName && <ScaledText style={styles.metaText}>{ownerName}</ScaledText>}
+          {dueStr && <ScaledText style={styles.metaText}>Due {dueStr}</ScaledText>}
         </View>
 
         {project.description ? (
-          <Text style={styles.projectDesc}>{project.description}</Text>
+          <ScaledText style={styles.projectDesc}>{project.description}</ScaledText>
         ) : null}
       </View>
 
@@ -342,25 +401,25 @@ export function ProjectDetailScreen() {
           style={[styles.tab, activeTab === 'active' && styles.tabActive]}
           onPress={() => setActiveTab('active')}
         >
-          <Text style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
+          <ScaledText style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
             Active {activeItems.length > 0 ? `(${activeItems.length})` : ''}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'notes' && styles.tabActive]}
           onPress={() => setActiveTab('notes')}
         >
-          <Text style={[styles.tabLabel, activeTab === 'notes' && styles.tabLabelActive]}>
+          <ScaledText style={[styles.tabLabel, activeTab === 'notes' && styles.tabLabelActive]}>
             Notes {notes.length > 0 ? `(${notes.length})` : ''}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'past' && styles.tabActive]}
           onPress={() => setActiveTab('past')}
         >
-          <Text style={[styles.tabLabel, activeTab === 'past' && styles.tabLabelActive]}>
+          <ScaledText style={[styles.tabLabel, activeTab === 'past' && styles.tabLabelActive]}>
             Past {pastItems.length > 0 ? `(${pastItems.length})` : ''}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
       </View>
 
@@ -373,7 +432,7 @@ export function ProjectDetailScreen() {
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No notes yet — add one below</Text>
+                <ScaledText style={styles.emptyText}>No notes yet — add one below</ScaledText>
               </View>
             }
             contentContainerStyle={styles.notesListContent}
@@ -410,9 +469,9 @@ export function ProjectDetailScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
+              <ScaledText style={styles.emptyText}>
                 {activeTab === 'active' ? 'No active tasks or appointments' : 'Nothing here yet'}
-              </Text>
+              </ScaledText>
             </View>
           }
           contentContainerStyle={styles.listContent}
@@ -428,7 +487,7 @@ export function ProjectDetailScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.sageDark} />
-            <Text style={styles.fabSecondaryLabel}>Add task</Text>
+            <ScaledText style={styles.fabSecondaryLabel}>Add task</ScaledText>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.fabSecondary}
@@ -436,7 +495,7 @@ export function ProjectDetailScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="calendar-outline" size={18} color={theme.colors.sageDark} />
-            <Text style={styles.fabSecondaryLabel}>Add appointment</Text>
+            <ScaledText style={styles.fabSecondaryLabel}>Add appointment</ScaledText>
           </TouchableOpacity>
         </View>
       )}
@@ -445,7 +504,7 @@ export function ProjectDetailScreen() {
         style={[styles.deleteRow, { paddingBottom: theme.spacing.md + insets.bottom }]}
         onPress={handleDelete}
       >
-        <Text style={styles.deleteLabel}>Delete project</Text>
+        <ScaledText style={styles.deleteLabel}>Delete project</ScaledText>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -733,5 +792,34 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.4,
+  },
+  noteEditInput: {
+    fontSize: theme.fontSize.body,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.input,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    minHeight: 72,
+    marginTop: theme.spacing.xs,
+  },
+  noteEditActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
+  },
+  noteEditCancel: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+  },
+  noteEditSave: {
+    fontSize: theme.fontSize.label,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sage,
   },
 });

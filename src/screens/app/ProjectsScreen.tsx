@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useProjectList } from '../../hooks/useProjectList';
 import { Project } from '../../services/projects';
+import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -56,17 +57,17 @@ function ProjectRow({ project, onPress }: ProjectRowProps) {
       activeOpacity={0.7}
     >
       <View style={styles.rowContent}>
-        <Text style={[styles.rowTitle, isDone && styles.rowTitleDone]} numberOfLines={2}>
+        <ScaledText style={[styles.rowTitle, isDone && styles.rowTitleDone]} numberOfLines={2}>
           {project.title}
-        </Text>
+        </ScaledText>
         <View style={styles.rowMeta}>
           <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
-            <Text style={[styles.statusBadgeText, { color: colors.fg }]}>
+            <ScaledText style={[styles.statusBadgeText, { color: colors.fg }]}>
               {STATUS_LABEL[project.status] ?? project.status}
-            </Text>
+            </ScaledText>
           </View>
           {dueStr && (
-            <Text style={styles.dueText}>Due {dueStr}</Text>
+            <ScaledText style={styles.dueText}>Due {dueStr}</ScaledText>
           )}
         </View>
       </View>
@@ -106,8 +107,8 @@ export function ProjectsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.circleName}>{circle?.name ?? ''}</Text>
-          <Text style={styles.headerTitle}>Projects</Text>
+          <ScaledText style={styles.circleName}>{circle?.name ?? ''}</ScaledText>
+          <ScaledText style={styles.headerTitle}>Projects</ScaledText>
         </View>
         <TouchableOpacity
           style={styles.avatar}
@@ -124,17 +125,17 @@ export function ProjectsScreen() {
           style={[styles.tab, activeTab === 'active' && styles.tabActive]}
           onPress={() => setActiveTab('active')}
         >
-          <Text style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
+          <ScaledText style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
             Active{activeProjects.length > 0 ? ` (${activeProjects.length})` : ''}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'done' && styles.tabActive]}
           onPress={() => setActiveTab('done')}
         >
-          <Text style={[styles.tabLabel, activeTab === 'done' && styles.tabLabelActive]}>
+          <ScaledText style={[styles.tabLabel, activeTab === 'done' && styles.tabLabelActive]}>
             Completed{doneProjects.length > 0 ? ` (${doneProjects.length})` : ''}
-          </Text>
+          </ScaledText>
         </TouchableOpacity>
       </View>
 
@@ -145,13 +146,13 @@ export function ProjectsScreen() {
       ) : visibleProjects.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="folder-outline" size={48} color={theme.colors.textFaint} />
-          <Text style={styles.emptyTitle}>
+          <ScaledText style={styles.emptyTitle}>
             {activeTab === 'active' ? 'No active projects' : 'No completed projects'}
-          </Text>
+          </ScaledText>
           {activeTab === 'active' && (
-            <Text style={styles.emptySubtitle}>
+            <ScaledText style={styles.emptySubtitle}>
               Projects help you group related tasks and appointments into one place.
-            </Text>
+            </ScaledText>
           )}
         </View>
       ) : (
