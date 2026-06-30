@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { theme } from '../constants/theme';
+import { ScaledText } from './ScaledText';
 import { Task } from '../services/tasks';
 import { formatDueLabel, isTaskOverdue } from '../utils/taskGrouping';
 
@@ -46,19 +47,19 @@ export function TaskItem({ task, assigneeName, assigneeIndex, onPress, onComplet
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={[styles.title, task.completed && styles.titleDone]} numberOfLines={2}>{task.title}</Text>
+        <ScaledText style={[styles.title, task.completed && styles.titleDone]} numberOfLines={2}>{task.title}</ScaledText>
         <View style={styles.meta}>
           {overdue && (
             <View style={styles.overdueBadge}>
-              <Text style={styles.overdueBadgeText}>Overdue</Text>
+              <ScaledText style={styles.overdueBadgeText}>Overdue</ScaledText>
             </View>
           )}
           {dueLabel !== '' && (
-            <Text style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{dueLabel}</Text>
+            <ScaledText style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{dueLabel}</ScaledText>
           )}
           {task.recurrence && (
             <View style={styles.repeatsBadge}>
-              <Text style={styles.repeatsBadgeText}>Repeats</Text>
+              <ScaledText style={styles.repeatsBadgeText}>Repeats</ScaledText>
             </View>
           )}
         </View>

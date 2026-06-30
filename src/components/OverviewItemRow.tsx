@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu';
 
 import { theme } from '../constants/theme';
+import { ScaledText } from './ScaledText';
 import { DropdownMenuItem } from './DropdownMenu';
 import { Appointment } from '../services/appointments';
 import { Task } from '../services/tasks';
@@ -57,9 +58,9 @@ function ItemMenu({ items }: { items: DropdownMenuItem[] }) {
         {items.map((item, idx) => (
           <MenuOption key={item.label} onSelect={item.onPress}>
             {idx > 0 && <View style={styles.menuDivider} />}
-            <Text style={[styles.menuItemLabel, item.destructive && styles.menuItemLabelDestructive]}>
+            <ScaledText style={[styles.menuItemLabel, item.destructive && styles.menuItemLabelDestructive]}>
               {item.label}
-            </Text>
+            </ScaledText>
           </MenuOption>
         ))}
       </MenuOptions>
@@ -78,15 +79,15 @@ export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComple
           <Ionicons name="calendar-outline" size={15} color={theme.colors.sage} />
         </View>
         <View style={styles.content}>
-          <Text style={styles.title} numberOfLines={2}>{appt.title}</Text>
-          <Text style={styles.apptMeta}>{formatApptMeta(appt)}</Text>
+          <ScaledText style={styles.title} numberOfLines={2}>{appt.title}</ScaledText>
+          <ScaledText style={styles.apptMeta}>{formatApptMeta(appt)}</ScaledText>
           {!!appt.location && (
-            <Text style={styles.apptLocation} numberOfLines={1}>{appt.location}</Text>
+            <ScaledText style={styles.apptLocation} numberOfLines={1}>{appt.location}</ScaledText>
           )}
           {projectName && (
             <TouchableOpacity style={styles.projectTag} onPress={onProjectTagPress} hitSlop={4}>
               <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
-              <Text style={styles.projectTagText} numberOfLines={1}>{projectName}</Text>
+              <ScaledText style={styles.projectTagText} numberOfLines={1}>{projectName}</ScaledText>
             </TouchableOpacity>
           )}
         </View>
@@ -121,31 +122,31 @@ export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComple
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <Text style={[styles.title, task.completed && styles.titleDone]} numberOfLines={2}>
+        <ScaledText style={[styles.title, task.completed && styles.titleDone]} numberOfLines={2}>
           {task.title}
-        </Text>
+        </ScaledText>
         <View style={styles.taskMeta}>
           {overdue && (
             <View style={styles.overdueBadge}>
-              <Text style={styles.overdueBadgeText}>Overdue</Text>
+              <ScaledText style={styles.overdueBadgeText}>Overdue</ScaledText>
             </View>
           )}
           {dueLabel !== '' && (
-            <Text style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{dueLabel}</Text>
+            <ScaledText style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{dueLabel}</ScaledText>
           )}
           {timeMeta !== null && (
-            <Text style={styles.timeMeta}>{timeMeta}</Text>
+            <ScaledText style={styles.timeMeta}>{timeMeta}</ScaledText>
           )}
           {!!task.recurrence && (
             <View style={styles.repeatsBadge}>
-              <Text style={styles.repeatsBadgeText}>Repeats</Text>
+              <ScaledText style={styles.repeatsBadgeText}>Repeats</ScaledText>
             </View>
           )}
         </View>
         {projectName && (
           <TouchableOpacity style={styles.projectTag} onPress={onProjectTagPress} hitSlop={4}>
             <Ionicons name="folder-outline" size={11} color={theme.colors.sageDark} />
-            <Text style={styles.projectTagText} numberOfLines={1}>{projectName}</Text>
+            <ScaledText style={styles.projectTagText} numberOfLines={1}>{projectName}</ScaledText>
           </TouchableOpacity>
         )}
       </View>

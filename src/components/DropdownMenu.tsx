@@ -2,12 +2,12 @@ import React from 'react';
 import {
   Dimensions,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 
 import { theme } from '../constants/theme';
+import { ScaledText } from './ScaledText';
 
 export interface MenuAnchor {
   x: number;
@@ -54,9 +54,9 @@ export function DropdownMenu({ visible, anchor, items, onDismiss }: Props) {
               onPress={() => { onDismiss(); item.onPress(); }}
               activeOpacity={0.65}
             >
-              <Text style={[styles.itemLabel, item.destructive && styles.itemLabelDestructive]}>
+              <ScaledText style={[styles.itemLabel, item.destructive && styles.itemLabelDestructive]}>
                 {item.label}
-              </Text>
+              </ScaledText>
             </TouchableOpacity>
           </React.Fragment>
         ))}
