@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { createCareCircle } from '../../services/circle';
 
 export function CreateCircleScreen() {
@@ -33,11 +34,11 @@ export function CreateCircleScreen() {
     <View style={styles.container}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <Text style={styles.backLabel}>Settings</Text>
+        <ScaledText style={styles.backLabel}>Settings</ScaledText>
       </TouchableOpacity>
 
-      <Text style={styles.screenTitle}>New circle</Text>
-      <Text style={styles.subtitle}>Give it a name that describes the group or purpose.</Text>
+      <ScaledText style={styles.screenTitle}>New circle</ScaledText>
+      <ScaledText style={styles.subtitle}>Give it a name that describes the group or purpose.</ScaledText>
 
       <View style={styles.form}>
         <TextInput
@@ -51,7 +52,7 @@ export function CreateCircleScreen() {
           onSubmitEditing={handleCreate}
           autoFocus
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleCreate}
@@ -61,7 +62,7 @@ export function CreateCircleScreen() {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.buttonLabel}>Create circle</Text>
+            <ScaledText style={styles.buttonLabel}>Create circle</ScaledText>
           )}
         </TouchableOpacity>
       </View>

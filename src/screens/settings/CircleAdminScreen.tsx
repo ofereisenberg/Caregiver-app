@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 
@@ -45,12 +46,12 @@ export function CircleAdminScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <Text style={styles.backLabel}>Settings</Text>
+        <ScaledText style={styles.backLabel}>Settings</ScaledText>
       </TouchableOpacity>
 
-      <Text style={styles.screenTitle}>{circle?.name ?? 'Care Circle'}</Text>
+      <ScaledText style={styles.screenTitle}>{circle?.name ?? 'Care Circle'}</ScaledText>
 
-      <Text style={styles.sectionLabel}>MEMBERS</Text>
+      <ScaledText style={styles.sectionLabel}>MEMBERS</ScaledText>
       <View style={styles.card}>
         {members.map((m, index) => {
           const isSelf = m.user_id === session?.user?.id;
@@ -63,10 +64,10 @@ export function CircleAdminScreen() {
                   </Text>
                 </View>
                 <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>
+                  <ScaledText style={styles.memberName}>
                     {m.displayName || 'Unnamed'}{isSelf ? ' (you)' : ''}
-                  </Text>
-                  <Text style={styles.memberRole}>{roleLabel(m.role)}</Text>
+                  </ScaledText>
+                  <ScaledText style={styles.memberRole}>{roleLabel(m.role)}</ScaledText>
                 </View>
               </View>
               {index < members.length - 1 && <View style={styles.rowDivider} />}
@@ -75,13 +76,13 @@ export function CircleAdminScreen() {
         })}
       </View>
 
-      <Text style={styles.sectionLabel}>INVITES</Text>
+      <ScaledText style={styles.sectionLabel}>INVITES</ScaledText>
       <View style={styles.card}>
         <TouchableOpacity
           style={styles.row}
           onPress={() => navigation.navigate('InviteManagement' as never)}
         >
-          <Text style={styles.rowLabel}>Manage invites</Text>
+          <ScaledText style={styles.rowLabel}>Manage invites</ScaledText>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.textHairline} />
         </TouchableOpacity>
       </View>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthStackParamList } from '../../navigation/types';
 import { getCurrentUserId, sendOtp, verifyOtp } from '../../services/auth';
@@ -74,11 +75,11 @@ export function CheckEmailScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Check your email</Text>
-        <Text style={styles.subtitle}>
+        <ScaledText style={styles.title}>Check your email</ScaledText>
+        <ScaledText style={styles.subtitle}>
           We sent a sign-in code to{'\n'}
-          <Text style={styles.email}>{email}</Text>
-        </Text>
+          <ScaledText style={styles.email}>{email}</ScaledText>
+        </ScaledText>
       </View>
 
       <View style={styles.form}>
@@ -94,7 +95,7 @@ export function CheckEmailScreen({ route, navigation }: Props) {
           onSubmitEditing={handleVerify}
           autoFocus
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleVerify}
@@ -104,7 +105,7 @@ export function CheckEmailScreen({ route, navigation }: Props) {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.buttonLabel}>Verify</Text>
+            <ScaledText style={styles.buttonLabel}>Verify</ScaledText>
           )}
         </TouchableOpacity>
 
@@ -112,9 +113,9 @@ export function CheckEmailScreen({ route, navigation }: Props) {
           {resending ? (
             <ActivityIndicator size="small" color={theme.colors.sage} />
           ) : (
-            <Text style={styles.resendText}>
+            <ScaledText style={styles.resendText}>
               {resent ? 'Sent! Check your inbox.' : "Didn't get it? Resend"}
-            </Text>
+            </ScaledText>
           )}
         </TouchableOpacity>
       </View>

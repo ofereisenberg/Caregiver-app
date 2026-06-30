@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -159,8 +158,8 @@ export function UserSettingsScreen() {
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLabelBlock}>
-            <Text style={styles.rowLabel}>Sync appointments</Text>
-            <Text style={styles.comingSoon}>Coming soon</Text>
+            <ScaledText style={styles.rowLabel}>Sync appointments</ScaledText>
+            <ScaledText style={styles.comingSoon}>Coming soon</ScaledText>
           </View>
           <Switch
             value={false}
@@ -179,11 +178,11 @@ export function UserSettingsScreen() {
           </MenuTrigger>
           <MenuOptions customStyles={circleMenuStyles}>
             <MenuOption onSelect={() => navigation.navigate('CreateCircle' as never)}>
-              <Text style={styles.menuItem}>Create circle</Text>
+              <ScaledText style={styles.menuItem}>Create circle</ScaledText>
             </MenuOption>
             <View style={styles.menuDivider} />
             <MenuOption onSelect={() => navigation.navigate('JoinCircle' as never)}>
-              <Text style={styles.menuItem}>Join with code</Text>
+              <ScaledText style={styles.menuItem}>Join with code</ScaledText>
             </MenuOption>
           </MenuOptions>
         </Menu>

@@ -226,9 +226,9 @@ export function TaskListScreen() {
               style={[styles.segment, filter === f && styles.segmentActive]}
               onPress={() => setFilter(f)}
             >
-              <Text style={[styles.segmentLabel, filter === f && styles.segmentLabelActive]}>
+              <ScaledText style={[styles.segmentLabel, filter === f && styles.segmentLabelActive]}>
                 {f === 'all' ? 'Open' : f === 'mine' ? 'Mine' : 'Done'}
-              </Text>
+              </ScaledText>
             </TouchableOpacity>
           ))}
         </View>
@@ -255,9 +255,9 @@ export function TaskListScreen() {
                 <View style={styles.filterChipRow}>
                   {filterProjectIds.map((id) => (
                     <View key={id} style={styles.filterChip}>
-                      <Text style={styles.filterChipLabel} numberOfLines={1}>
+                      <ScaledText style={styles.filterChipLabel} numberOfLines={1}>
                         {projectMap.get(id) ?? id}
-                      </Text>
+                      </ScaledText>
                       <TouchableOpacity
                         onPress={() => setFilterProjectIds((ids) => ids.filter((i) => i !== id))}
                         hitSlop={6}
@@ -268,7 +268,7 @@ export function TaskListScreen() {
                   ))}
                 </View>
                 <TouchableOpacity onPress={() => setFilterProjectIds([])} hitSlop={8}>
-                  <Text style={styles.clearAllLabel}>Clear</Text>
+                  <ScaledText style={styles.clearAllLabel}>Clear</ScaledText>
                 </TouchableOpacity>
               </>
             )}
@@ -277,7 +277,7 @@ export function TaskListScreen() {
           {filterDropdownOpen && (
             <View style={styles.filterDropdown}>
               {activeProjects.length === 0 ? (
-                <Text style={styles.filterDropdownEmpty}>No active projects</Text>
+                <ScaledText style={styles.filterDropdownEmpty}>No active projects</ScaledText>
               ) : (
                 activeProjects.map((proj) => {
                   const selected = filterProjectIds.includes(proj.id);
@@ -292,9 +292,9 @@ export function TaskListScreen() {
                       }
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.filterDropdownLabel, selected && styles.filterDropdownLabelSelected]}>
+                      <ScaledText style={[styles.filterDropdownLabel, selected && styles.filterDropdownLabelSelected]}>
                         {proj.title}
-                      </Text>
+                      </ScaledText>
                       {selected && <Ionicons name="checkmark" size={16} color={theme.colors.sage} />}
                     </TouchableOpacity>
                   );
@@ -349,7 +349,7 @@ export function TaskListScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} />
             </View>
-            <Text style={styles.fabMenuLabel}>Appointment</Text>
+            <ScaledText style={styles.fabMenuLabel}>Appointment</ScaledText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -360,7 +360,7 @@ export function TaskListScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.sage} />
             </View>
-            <Text style={styles.fabMenuLabel}>Task</Text>
+            <ScaledText style={styles.fabMenuLabel}>Task</ScaledText>
           </TouchableOpacity>
         </View>
       )}

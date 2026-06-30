@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthStackParamList } from '../../navigation/types';
 import { sendOtp } from '../../services/auth';
@@ -43,8 +44,8 @@ export function EnterEmailScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.appName}>Care for Mutti</Text>
-        <Text style={styles.tagline}>Sign in to your care circle</Text>
+        <ScaledText style={styles.appName}>Care for Mutti</ScaledText>
+        <ScaledText style={styles.tagline}>Sign in to your care circle</ScaledText>
       </View>
 
       <View style={styles.form}>
@@ -60,7 +61,7 @@ export function EnterEmailScreen({ navigation }: Props) {
           returnKeyType="send"
           onSubmitEditing={handleSend}
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleSend}
@@ -70,7 +71,7 @@ export function EnterEmailScreen({ navigation }: Props) {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.buttonLabel}>Send sign-in link</Text>
+            <ScaledText style={styles.buttonLabel}>Send sign-in link</ScaledText>
           )}
         </TouchableOpacity>
       </View>

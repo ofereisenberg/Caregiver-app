@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthStackParamList } from '../../navigation/types';
 import { createCareCircle, joinCircleWithToken } from '../../services/circle';
@@ -61,8 +62,8 @@ export function SetupCircleScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Your care circle</Text>
-        <Text style={styles.subtitle}>Create a new circle or join one with an invite code.</Text>
+        <ScaledText style={styles.title}>Your care circle</ScaledText>
+        <ScaledText style={styles.subtitle}>Create a new circle or join one with an invite code.</ScaledText>
       </View>
 
       <View style={styles.tabs}>
@@ -71,14 +72,14 @@ export function SetupCircleScreen({ navigation }: Props) {
           onPress={() => switchTab('create')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.tabLabel, tab === 'create' && styles.tabLabelActive]}>Create</Text>
+          <ScaledText style={[styles.tabLabel, tab === 'create' && styles.tabLabelActive]}>Create</ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'join' && styles.tabActive]}
           onPress={() => switchTab('join')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.tabLabel, tab === 'join' && styles.tabLabelActive]}>Join</Text>
+          <ScaledText style={[styles.tabLabel, tab === 'join' && styles.tabLabelActive]}>Join</ScaledText>
         </TouchableOpacity>
       </View>
 
@@ -96,7 +97,7 @@ export function SetupCircleScreen({ navigation }: Props) {
               onSubmitEditing={handleCreate}
               autoFocus
             />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleCreate}
@@ -106,7 +107,7 @@ export function SetupCircleScreen({ navigation }: Props) {
               {loading ? (
                 <ActivityIndicator color={theme.colors.surface} />
               ) : (
-                <Text style={styles.buttonLabel}>Create circle</Text>
+                <ScaledText style={styles.buttonLabel}>Create circle</ScaledText>
               )}
             </TouchableOpacity>
           </>
@@ -124,7 +125,7 @@ export function SetupCircleScreen({ navigation }: Props) {
               onSubmitEditing={handleJoin}
               autoFocus
             />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleJoin}
@@ -134,7 +135,7 @@ export function SetupCircleScreen({ navigation }: Props) {
               {loading ? (
                 <ActivityIndicator color={theme.colors.surface} />
               ) : (
-                <Text style={styles.buttonLabel}>Join circle</Text>
+                <ScaledText style={styles.buttonLabel}>Join circle</ScaledText>
               )}
             </TouchableOpacity>
           </>

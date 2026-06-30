@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { joinCircleWithToken } from '../../services/circle';
 
@@ -36,11 +37,11 @@ export function JoinCircleScreen() {
     <View style={styles.container}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <Text style={styles.backLabel}>Settings</Text>
+        <ScaledText style={styles.backLabel}>Settings</ScaledText>
       </TouchableOpacity>
 
-      <Text style={styles.screenTitle}>Join a circle</Text>
-      <Text style={styles.subtitle}>Enter the invite code shared with you.</Text>
+      <ScaledText style={styles.screenTitle}>Join a circle</ScaledText>
+      <ScaledText style={styles.subtitle}>Enter the invite code shared with you.</ScaledText>
 
       <View style={styles.form}>
         <TextInput
@@ -55,7 +56,7 @@ export function JoinCircleScreen() {
           onSubmitEditing={handleJoin}
           autoFocus
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleJoin}
@@ -65,7 +66,7 @@ export function JoinCircleScreen() {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.buttonLabel}>Join circle</Text>
+            <ScaledText style={styles.buttonLabel}>Join circle</ScaledText>
           )}
         </TouchableOpacity>
       </View>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthStackParamList } from '../../navigation/types';
 import {
@@ -85,18 +86,18 @@ export function InviteManagementScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Invite family members</Text>
-        <Text style={styles.subtitle}>
+        <ScaledText style={styles.title}>Invite family members</ScaledText>
+        <ScaledText style={styles.subtitle}>
           Share this code with anyone you want in the circle. It's valid for 7 days.
-        </Text>
+        </ScaledText>
       </View>
 
       <View style={styles.inviteCard}>
         {inviteCode ? (
           <>
-            <Text style={styles.inviteCode}>{inviteCode}</Text>
+            <ScaledText style={styles.inviteCode}>{inviteCode}</ScaledText>
             <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
-              <Text style={styles.shareButtonLabel}>Share code</Text>
+              <ScaledText style={styles.shareButtonLabel}>Share code</ScaledText>
             </TouchableOpacity>
           </>
         ) : (
@@ -109,7 +110,7 @@ export function InviteManagementScreen({ navigation }: Props) {
             {generatingInvite ? (
               <ActivityIndicator color={theme.colors.surface} />
             ) : (
-              <Text style={styles.buttonLabel}>Generate invite code</Text>
+              <ScaledText style={styles.buttonLabel}>Generate invite code</ScaledText>
             )}
           </TouchableOpacity>
         )}
@@ -117,11 +118,11 @@ export function InviteManagementScreen({ navigation }: Props) {
 
       {members.length > 0 && (
         <View style={styles.membersSection}>
-          <Text style={styles.sectionLabel}>CIRCLE MEMBERS</Text>
+          <ScaledText style={styles.sectionLabel}>CIRCLE MEMBERS</ScaledText>
           {members.map((m) => (
             <View key={m.user_id} style={styles.memberRow}>
-              <Text style={styles.memberName}>{m.displayName || 'Unnamed'}</Text>
-              <Text style={styles.memberRole}>{m.role}</Text>
+              <ScaledText style={styles.memberName}>{m.displayName || 'Unnamed'}</ScaledText>
+              <ScaledText style={styles.memberRole}>{m.role}</ScaledText>
             </View>
           ))}
         </View>
@@ -132,7 +133,7 @@ export function InviteManagementScreen({ navigation }: Props) {
         onPress={handleDone}
         activeOpacity={0.8}
       >
-        <Text style={styles.doneButtonLabel}>{canGoBack ? 'Done' : 'Start using the app'}</Text>
+        <ScaledText style={styles.doneButtonLabel}>{canGoBack ? 'Done' : 'Start using the app'}</ScaledText>
       </TouchableOpacity>
     </View>
   );

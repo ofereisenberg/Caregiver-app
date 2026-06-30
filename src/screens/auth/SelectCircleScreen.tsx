@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserCircles } from '../../services/circle';
 import { Tables } from '../../types/database';
@@ -32,8 +33,8 @@ export function SelectCircleScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Choose a circle</Text>
-        <Text style={styles.subtitle}>Select which circle to open.</Text>
+        <ScaledText style={styles.title}>Choose a circle</ScaledText>
+        <ScaledText style={styles.subtitle}>Select which circle to open.</ScaledText>
       </View>
 
       {loading ? (
@@ -48,7 +49,7 @@ export function SelectCircleScreen() {
               disabled={switching !== null}
               activeOpacity={0.7}
             >
-              <Text style={styles.rowLabel}>{circle.name}</Text>
+              <ScaledText style={styles.rowLabel}>{circle.name}</ScaledText>
               {switching === circle.id ? (
                 <ActivityIndicator size="small" color={theme.colors.sage} />
               ) : (

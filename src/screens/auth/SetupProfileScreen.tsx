@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { theme } from '../../constants/theme';
+import { ScaledText } from '../../components/ScaledText';
 import { AuthStackParamList } from '../../navigation/types';
 import { getCurrentUserId } from '../../services/auth';
 import { updateDisplayName } from '../../services/profile';
@@ -44,8 +45,8 @@ export function SetupProfileScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>What's your name?</Text>
-        <Text style={styles.subtitle}>This is how you'll appear in the care circle.</Text>
+        <ScaledText style={styles.title}>What's your name?</ScaledText>
+        <ScaledText style={styles.subtitle}>This is how you'll appear in the care circle.</ScaledText>
       </View>
 
       <View style={styles.form}>
@@ -61,7 +62,7 @@ export function SetupProfileScreen({ navigation }: Props) {
           onSubmitEditing={handleSave}
           autoFocus
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <ScaledText style={styles.error}>{error}</ScaledText> : null}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleSave}
@@ -71,7 +72,7 @@ export function SetupProfileScreen({ navigation }: Props) {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <Text style={styles.buttonLabel}>Continue</Text>
+            <ScaledText style={styles.buttonLabel}>Continue</ScaledText>
           )}
         </TouchableOpacity>
       </View>
