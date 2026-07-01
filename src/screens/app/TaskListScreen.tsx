@@ -26,7 +26,7 @@ import { updateAppointment, deleteAppointment } from '../../services/appointment
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
-type Filter = 'all' | 'mine' | 'done';
+type Filter = 'all' | 'done';
 
 export function TaskListScreen() {
   const navigation = useNavigation<Nav>();
@@ -38,11 +38,11 @@ export function TaskListScreen() {
   const [fabOpen, setFabOpen] = useState(false);
   const [filterProjectIds, setFilterProjectIds] = useState<string[]>([]);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [mineActive, setMineActive] = useState(false);
 
   const { sections, loading: dataLoading, handleComplete, refresh } = useOverview(
     circle?.id ?? null,
     filter,
-    currentUserId,
   );
 
   const { projects } = useProjectList(circle?.id ?? null);
@@ -59,16 +59,30 @@ export function TaskListScreen() {
   );
 
   const filteredSections = useMemo(() => {
-    if (filter !== 'all' || filterProjectIds.length === 0) return sections;
-    return sections
-      .map((section) => ({
-        ...section,
-        data: section.data.filter((item) =>
-          filterProjectIds.includes(item.data.project_id ?? ''),
-        ),
-      }))
-      .filter((section) => section.data.length > 0);
-  }, [sections, filter, filterProjectIds]);
+    if (filter !== 'all') return sections;
+    let result = sections;
+    if (filterProjectIds.length > 0) {
+      result = result
+        .map((section) => ({
+          ...section,
+          data: section.data.filter((item) => filterProjectIds.includes(item.data.project_id ?? '')),
+        }))
+        .filter((section) => section.data.length > 0);
+    }
+    if (mineActive) {
+      result = result
+        .map((section) => ({
+          ...section,
+          data: section.data.filter((item) =>
+            item.kind === 'task'
+              ? item.data.assignee === currentUserId
+              : item.data.invitee_ids.includes(currentUserId),
+          ),
+        }))
+        .filter((section) => section.data.length > 0);
+    }
+    return result;
+  }, [sections, filter, filterProjectIds, mineActive, currentUserId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,6 +103,7 @@ export function TaskListScreen() {
 
   const isLoading = circleLoading || (dataLoading && sections.length === 0);
   const isFiltered = filter === 'all' && filterProjectIds.length > 0;
+  const isAnyFilterActive = isFiltered || mineActive;
 
   function renderSectionHeader({ section }: { section: OverviewSection }) {
     const isToday = section.key === 'today';
@@ -195,11 +210,7 @@ export function TaskListScreen() {
     );
   }
 
-  const emptyText = filter === 'mine'
-    ? 'No tasks assigned to you.'
-    : filter === 'done'
-    ? 'No completed tasks yet.'
-    : 'Nothing coming up.';
+  const emptyText = filter === 'done' ? 'No completed tasks yet.' : 'Nothing coming up.';
 
   return (
     <View style={styles.container}>
@@ -220,14 +231,14 @@ export function TaskListScreen() {
       {/* Segmented control */}
       <View style={styles.segmentedWrapper}>
         <View style={styles.segmented}>
-          {(['all', 'mine', 'done'] as Filter[]).map((f) => (
+          {(['all', 'done'] as Filter[]).map((f) => (
             <TouchableOpacity
               key={f}
               style={[styles.segment, filter === f && styles.segmentActive]}
-              onPress={() => setFilter(f)}
+              onPress={() => { setFilter(f); setMineActive(false); }}
             >
               <ScaledText style={[styles.segmentLabel, filter === f && styles.segmentLabelActive]}>
-                {f === 'all' ? 'Open' : f === 'mine' ? 'Mine' : 'Done'}
+                {f === 'all' ? 'Upcoming' : 'Done'}
               </ScaledText>
             </TouchableOpacity>
           ))}
@@ -248,6 +259,16 @@ export function TaskListScreen() {
                 size={16}
                 color={filterDropdownOpen ? theme.colors.surface : theme.colors.sage}
               />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.mineBtn, mineActive && styles.mineBtnActive]}
+              onPress={() => setMineActive((v) => !v)}
+              hitSlop={8}
+            >
+              <ScaledText style={[styles.mineBtnLabel, mineActive && styles.mineBtnLabelActive]}>
+                Mine
+              </ScaledText>
             </TouchableOpacity>
 
             {isFiltered && (
@@ -313,7 +334,7 @@ export function TaskListScreen() {
       ) : filteredSections.length === 0 ? (
         <View style={styles.centered}>
           <ScaledText style={styles.emptyText}>
-            {isFiltered ? 'Nothing matches your filter.' : emptyText}
+            {isAnyFilterActive ? 'Nothing matches your filter.' : emptyText}
           </ScaledText>
         </View>
       ) : (
@@ -515,6 +536,30 @@ const styles = StyleSheet.create({
   filterIconBtnActive: {
     backgroundColor: theme.colors.sage,
     borderColor: theme.colors.sage,
+  },
+  mineBtn: {
+    height: 28,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: 14,
+    backgroundColor: theme.colors.sageTint,
+    borderWidth: 1,
+    borderColor: theme.colors.sageLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  mineBtnActive: {
+    backgroundColor: theme.colors.sage,
+    borderColor: theme.colors.sage,
+  },
+  mineBtnLabel: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sansSemiBold,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.sageDark,
+  },
+  mineBtnLabelActive: {
+    color: theme.colors.surface,
   },
   filterChipRow: {
     flex: 1,

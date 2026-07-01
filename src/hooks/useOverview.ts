@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '../services/supabase';
 import { completeTask, getCompletedTasksForCircle, getTasksForCircle, Task } from '../services/tasks';
-import { Appointment, getAppointmentsForCircle } from '../services/appointments';
+import { AppointmentWithInvitees, getAppointmentsForCircle } from '../services/appointments';
 import { groupOverviewIntoSections, OverviewItem, OverviewSection } from '../utils/overviewGrouping';
 
 interface UseOverviewResult {
@@ -15,11 +15,10 @@ interface UseOverviewResult {
 
 export function useOverview(
   circleId: string | null,
-  filter: 'all' | 'mine' | 'done',
-  currentUserId?: string,
+  filter: 'all' | 'done',
 ): UseOverviewResult {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentWithInvitees[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,17 +76,11 @@ export function useOverview(
     if (err) fetchAll();
   }, [fetchAll]);
 
-  const visibleTasks = filter === 'mine'
-    ? tasks.filter(t => currentUserId ? t.assignee === currentUserId : false)
-    : tasks;
-
-  const visibleAppointments = filter === 'mine' ? [] : appointments;
-
   const sections: OverviewSection[] = filter === 'done'
-    ? (visibleTasks.length > 0
-        ? [{ key: 'done' as const, title: 'Completed', count: visibleTasks.length, data: visibleTasks.map(t => ({ kind: 'task' as const, data: t })) }]
+    ? (tasks.length > 0
+        ? [{ key: 'done' as const, title: 'Completed', count: tasks.length, data: tasks.map(t => ({ kind: 'task' as const, data: t })) }]
         : [])
-    : groupOverviewIntoSections(visibleTasks, visibleAppointments);
+    : groupOverviewIntoSections(tasks, appointments);
 
   return { sections, loading, error, handleComplete, refresh: fetchAll };
 }

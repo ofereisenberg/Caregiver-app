@@ -1,9 +1,9 @@
 import { Task } from '../services/tasks';
-import { Appointment } from '../services/appointments';
+import { AppointmentWithInvitees } from '../services/appointments';
 
 export type OverviewItem =
   | { kind: 'task'; data: Task }
-  | { kind: 'appointment'; data: Appointment };
+  | { kind: 'appointment'; data: AppointmentWithInvitees };
 
 export interface OverviewSection {
   key: 'today' | 'thisWeek' | 'later' | 'done';
@@ -41,7 +41,7 @@ function sortItems(items: OverviewItem[]): OverviewItem[] {
 
 export function groupOverviewIntoSections(
   tasks: Task[],
-  appointments: Appointment[],
+  appointments: AppointmentWithInvitees[],
 ): OverviewSection[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

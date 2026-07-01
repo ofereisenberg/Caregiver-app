@@ -7,14 +7,31 @@ export type AppointmentUpdate = TablesUpdate<'appointments'>;
 
 export type AppointmentWithInvitees = Appointment & { invitee_ids: string[] };
 
-export async function getAppointmentsForCircle(circleId: string): Promise<{ data: Appointment[]; error: string | null }> {
-  const { data, error } = await supabase
+export async function getAppointmentsForCircle(circleId: string): Promise<{ data: AppointmentWithInvitees[]; error: string | null }> {
+  const { data: appts, error: apptErr } = await supabase
     .from('appointments')
     .select('*')
     .eq('circle_id', circleId)
     .order('starts_at', { ascending: true });
 
-  return { data: data ?? [], error: error?.message ?? null };
+  if (apptErr) return { data: [], error: apptErr.message };
+  if (!appts || appts.length === 0) return { data: [], error: null };
+
+  const { data: invitees } = await supabase
+    .from('appointment_invitees')
+    .select('appointment_id, user_id')
+    .in('appointment_id', appts.map((a) => a.id));
+
+  const inviteeMap = new Map<string, string[]>();
+  (invitees ?? []).forEach(({ appointment_id, user_id }) => {
+    if (!inviteeMap.has(appointment_id)) inviteeMap.set(appointment_id, []);
+    inviteeMap.get(appointment_id)!.push(user_id);
+  });
+
+  return {
+    data: appts.map((a) => ({ ...a, invitee_ids: inviteeMap.get(a.id) ?? [] })),
+    error: null,
+  };
 }
 
 export async function getAppointment(id: string): Promise<{ data: AppointmentWithInvitees | null; error: string | null }> {
