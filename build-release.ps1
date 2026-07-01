@@ -83,6 +83,30 @@ $ApkSource = "$ProjectRoot\android\app\build\outputs\apk\release\app-release.apk
 $ApkDest   = "$ReleasesDir\caregiver-app-v$NewVersion.apk"
 Copy-Item $ApkSource $ApkDest
 
+# --- Commit version bump and tag release -------------------------------------
+
+Write-Host ""
+Write-Host "  Committing version bump ..."
+
+git -C $ProjectRoot add "$ProjectRoot\app.json" "$ProjectRoot\android\app\build.gradle"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  WARNING: git add failed -- commit and tag skipped." -ForegroundColor Yellow
+} else {
+    git -C $ProjectRoot commit -m "Release v$NewVersion"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  WARNING: git commit failed -- tag and push skipped." -ForegroundColor Yellow
+    } else {
+        git -C $ProjectRoot tag "v$NewVersion"
+        git -C $ProjectRoot push origin HEAD
+        git -C $ProjectRoot push origin "v$NewVersion"
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  Committed, tagged, and pushed v$NewVersion." -ForegroundColor Green
+        } else {
+            Write-Host "  WARNING: git push failed -- commit and tag exist locally but were not pushed." -ForegroundColor Yellow
+        }
+    }
+}
+
 # --- Done --------------------------------------------------------------------
 
 Write-Host ""
@@ -90,7 +114,8 @@ Write-Host "================================================" -ForegroundColor G
 Write-Host "  Build complete!" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  APK: $ApkDest"
+Write-Host "  APK : $ApkDest"
+Write-Host "  Tag : v$NewVersion"
 Write-Host ""
 Write-Host "  Next steps:"
 Write-Host "    1. Upload the APK to Google Drive > Caregiver App > v$NewVersion"
