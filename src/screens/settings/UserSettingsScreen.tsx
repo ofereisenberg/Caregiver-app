@@ -20,6 +20,8 @@ import { useProfile } from '../../hooks/useProfile';
 import { useUserCircles } from '../../hooks/useUserCircles';
 import { updateDisplayName, updateRemindersEnabled } from '../../services/profile';
 import { ScaledText } from '../../components/ScaledText';
+import { useLanguage } from '../../hooks/useLanguage';
+import { AppLanguage } from '../../i18n';
 
 export function UserSettingsScreen() {
   const { session, activeCircleId, switchCircle, signOut } = useAuth();
@@ -27,6 +29,7 @@ export function UserSettingsScreen() {
   const { profile, loading, reload } = useProfile();
   const { circles, refresh: refreshCircles } = useUserCircles();
   const { scaleKey, setScale } = useFontScale();
+  const { currentLanguage, setLanguage } = useLanguage();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -146,6 +149,29 @@ export function UserSettingsScreen() {
                 >
                   <ScaledText style={[styles.scaleChipLabel, active && styles.scaleChipLabelActive]}>
                     {FONT_SCALE_LABELS[key]}
+                  </ScaledText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <ScaledText style={styles.sectionLabel}>LANGUAGE</ScaledText>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.scaleOptions}>
+            {(['de', 'en'] as AppLanguage[]).map((lang) => {
+              const active = lang === currentLanguage;
+              return (
+                <TouchableOpacity
+                  key={lang}
+                  style={[styles.scaleChip, active && styles.scaleChipActive]}
+                  onPress={() => setLanguage(lang)}
+                  activeOpacity={0.75}
+                >
+                  <ScaledText style={[styles.scaleChipLabel, active && styles.scaleChipLabelActive]}>
+                    {lang === 'de' ? 'Deutsch' : 'English'}
                   </ScaledText>
                 </TouchableOpacity>
               );
