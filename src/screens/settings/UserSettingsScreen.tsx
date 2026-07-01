@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -10,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
@@ -167,12 +165,7 @@ export function UserSettingsScreen() {
             value={profile?.reminders_enabled ?? false}
             onValueChange={async (enabled) => {
               if (session?.user?.id) await updateRemindersEnabled(session.user.id, enabled);
-              if (enabled && Platform.OS === 'android') {
-                await IntentLauncher.startActivityAsync(
-                  IntentLauncher.ActivityAction.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                  { data: 'package:com.anonymous.caregiverapp' },
-                );
-              }
+              // TODO: prompt battery optimization exemption after native rebuild (expo-intent-launcher)
               reload();
             }}
             trackColor={{ false: theme.colors.disabledBg, true: theme.colors.sage }}
