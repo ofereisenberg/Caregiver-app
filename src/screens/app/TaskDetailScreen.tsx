@@ -47,13 +47,13 @@ function parseTimeString(t: string | null): Date | null {
   if (!t) return null;
   const [h, m] = t.split(':').map(Number);
   const d = new Date();
-  d.setHours(h, m, 0, 0);
+  d.setUTCHours(h, m, 0, 0);
   return d;
 }
 
 function timeToString(t: Date | null): string | null {
   if (!t) return null;
-  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:00`;
+  return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}:00`;
 }
 
 const REPEAT_OPTIONS: { label: string; value: string | null }[] = [
@@ -439,11 +439,13 @@ export function TaskDetailScreen() {
           <ReminderPicker
             value={reminderOffsetMinutes}
             onChange={(minutes) => {
+              if (!startTime) return;
               setReminderOffsetMinutes(minutes);
               updateTask(taskId, { reminder_offset_minutes: minutes });
             }}
-            isExpanded={expandedRow === 'reminder'}
-            onToggle={() => toggleRow('reminder')}
+            isExpanded={expandedRow === 'reminder' && startTime !== null}
+            onToggle={() => { if (startTime) toggleRow('reminder'); }}
+            disabled={startTime === null}
           />
 
           <View style={styles.rowDivider} />

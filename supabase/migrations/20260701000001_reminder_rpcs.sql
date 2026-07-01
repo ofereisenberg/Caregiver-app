@@ -1,4 +1,9 @@
-CREATE OR REPLACE FUNCTION get_due_task_reminders()
+-- Task reminder RPC uses due_date + start_time (both stored in UTC) to form
+-- the trigger timestamp. Reminders only fire when start_time is set — date-only
+-- tasks have no meaningful time to count down from (use daily digest for those).
+DROP FUNCTION IF EXISTS get_due_task_reminders();
+
+CREATE FUNCTION get_due_task_reminders()
 RETURNS TABLE (
   id            uuid,
   title         text,
@@ -14,29 +19,33 @@ AS $$
     t.title,
     t.assignee,
     CASE
-      WHEN t.due_date - now() < interval '1 hour'
-        THEN 'Due in ' || EXTRACT(MINUTE FROM (t.due_date - now()))::int || ' minutes'
-      WHEN t.due_date - now() < interval '1 day'
-        THEN 'Due in ' || EXTRACT(HOUR FROM (t.due_date - now()))::int || ' hours'
+      WHEN task_time - now() < interval '1 hour'
+        THEN 'In ' || EXTRACT(MINUTE FROM (task_time - now()))::int || ' minutes'
+      WHEN task_time - now() < interval '1 day'
+        THEN 'In ' || EXTRACT(HOUR FROM (task_time - now()))::int || ' hours'
       ELSE
-        'Due on ' || to_char(t.due_date AT TIME ZONE 'UTC', 'Mon DD')
+        'On ' || to_char(task_time AT TIME ZONE 'UTC', 'Mon DD')
     END AS due_label,
-    t.due_date AS scheduled_for
+    task_time AS scheduled_for
   FROM tasks t
+  CROSS JOIN LATERAL (
+    SELECT (t.due_date::date + t.start_time) AT TIME ZONE 'UTC' AS task_time
+  ) ts
   WHERE
     t.reminder_offset_minutes IS NOT NULL
+    AND t.start_time IS NOT NULL
     AND t.completed = false
     AND t.assignee IS NOT NULL
-    AND t.due_date > now()
-    AND (t.due_date - (t.reminder_offset_minutes * interval '1 minute')) <= now()
-    AND (t.due_date - (t.reminder_offset_minutes * interval '1 minute')) > now() - interval '5 minutes'
+    AND task_time > now()
+    AND (task_time - (t.reminder_offset_minutes * interval '1 minute')) <= now()
+    AND (task_time - (t.reminder_offset_minutes * interval '1 minute')) > now() - interval '5 minutes'
     AND NOT EXISTS (
       SELECT 1 FROM notification_log nl
       WHERE nl.item_type = 'task'
         AND nl.item_id = t.id
         AND nl.notification_type = 'reminder'
         AND nl.success = true
-        AND nl.scheduled_for = t.due_date
+        AND nl.scheduled_for = task_time
     );
 $$;
 

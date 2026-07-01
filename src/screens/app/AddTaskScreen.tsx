@@ -56,7 +56,7 @@ function makeTodayAt(hour: number): Date {
 
 function timeToString(t: Date | null): string | null {
   if (!t) return null;
-  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:00`;
+  return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}:00`;
 }
 
 export function AddTaskScreen() {
@@ -312,9 +312,13 @@ export function AddTaskScreen() {
         <View style={styles.rowDivider} />
         <ReminderPicker
           value={reminderOffsetMinutes}
-          onChange={setReminderOffsetMinutes}
-          isExpanded={expandedRow === 'reminder'}
-          onToggle={() => toggleRow('reminder')}
+          onChange={(v) => {
+            if (!startTime) return;
+            setReminderOffsetMinutes(v);
+          }}
+          isExpanded={expandedRow === 'reminder' && startTime !== null}
+          onToggle={() => { if (startTime) toggleRow('reminder'); }}
+          disabled={startTime === null}
         />
 
         <View style={styles.rowDivider} />

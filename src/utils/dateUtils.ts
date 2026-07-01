@@ -14,3 +14,20 @@ export function toLocalISODate(date: Date): string {
 export function parseDateOnly(dateStr: string): Date {
   return new Date(dateStr + 'T00:00:00');
 }
+
+// Serialises a Date's time component as UTC HH:MM:SS.
+// The DB stores task start_time as UTC so the server-side RPC can combine
+// due_date + start_time into a correct UTC timestamp for reminder windows.
+export function timeToUTCString(t: Date): string {
+  return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}:00`;
+}
+
+// Parses a UTC HH:MM:SS string back into a Date whose UTC hours match.
+// toLocaleTimeString() on the result will show the correct local time to the user.
+export function parseUTCTimeString(t: string | null): Date | null {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  const d = new Date();
+  d.setUTCHours(h, m, 0, 0);
+  return d;
+}

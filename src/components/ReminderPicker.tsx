@@ -25,16 +25,19 @@ interface ReminderPickerProps {
   onChange: (minutes: number | null) => void;
   isExpanded: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }
 
-export function ReminderPicker({ value, onChange, isExpanded, onToggle }: ReminderPickerProps) {
+export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled = false }: ReminderPickerProps) {
   return (
     <>
-      <TouchableOpacity style={styles.expandRow} onPress={onToggle}>
-        <ScaledText style={styles.label}>
-          <ScaledText style={styles.plus}>+ </ScaledText>Remind me
+      <TouchableOpacity style={styles.expandRow} onPress={onToggle} disabled={disabled}>
+        <ScaledText style={[styles.label, disabled && styles.labelDisabled]}>
+          <ScaledText style={[styles.plus, disabled && styles.plusDisabled]}>+ </ScaledText>Remind me
         </ScaledText>
-        <ScaledText style={styles.value}>{formatReminder(value)}</ScaledText>
+        <ScaledText style={[styles.value, disabled && styles.valueDisabled]}>
+          {disabled ? 'Set a time first' : formatReminder(value)}
+        </ScaledText>
       </TouchableOpacity>
 
       {isExpanded && (
@@ -84,10 +87,20 @@ const styles = StyleSheet.create({
   plus: {
     color: theme.colors.sage,
   },
+  plusDisabled: {
+    color: theme.colors.textFaint,
+  },
+  labelDisabled: {
+    color: theme.colors.textMuted,
+  },
   value: {
     fontSize: theme.fontSize.body,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textSecondary,
+  },
+  valueDisabled: {
+    color: theme.colors.textFaint,
+    fontStyle: 'italic',
   },
   chipRow: {
     flexDirection: 'row',
