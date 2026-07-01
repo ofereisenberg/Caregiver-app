@@ -80,7 +80,7 @@ export function AddAppointmentScreen() {
   const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
   const [location, setLocation] = useState('');
   const [recurrence, setRecurrence] = useState<string | null>(null);
-  const [inviteeIds, setInviteeIds] = useState<string[]>([]);
+  const [inviteeIds, setInviteeIds] = useState<string[]>(() => session?.user.id ? [session.user.id] : []);
   const [reminderOffsetMinutes, setReminderOffsetMinutes] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
   const [projectId, setProjectId] = useState<string | null>(route.params?.projectId ?? null);
@@ -228,7 +228,7 @@ export function AddAppointmentScreen() {
         navigation.replace('AppointmentDetail', { appointmentId: appt.id });
       }
     }
-  }, [title, details, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, circle, session, navigation, isEditMode, appointmentId]);
+  }, [title, details, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, reminderOffsetMinutes, circle, session, navigation, isEditMode, appointmentId]);
 
   const { vacations } = useVacations(circle?.id ?? null);
 

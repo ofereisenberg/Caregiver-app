@@ -6,65 +6,50 @@
 
 ## Current Status
 
-Reminders & push notification infrastructure (F1) is fully implemented and working end-to-end:
-- Cron fires every 5 minutes via pg_cron + pg_net
-- `send-reminders` Edge Function queries due reminders and calls `notify`
-- `notify` Edge Function sends FCM v1 push notifications and writes to `notification_log`
-- ReminderPicker UI wired into AddTask, TaskDetail, AddAppointment screens
-- Reminders toggle in Settings (battery optimization prompt deferred to next native rebuild)
-- Foreground notification handler set up so notifications show even when app is open
-- Timezone bug fixed: all date-only writes now use local timezone (not UTC)
-- Task and appointment reminders both tested and confirmed working on device
-
-Vacation & collapsible calendar design is agreed (`docs/designs/design-vacation-calendar.md`) — not yet implemented.
+Reminders & push notification infrastructure (F1) is fully implemented and working end-to-end, including custom reminder offsets. Vacation entry & editing is implemented. Collapsible calendar design is agreed but not yet implemented.
 
 ---
 
 ## What Was Done This Session (2026-07-01)
 
-### Reminder dedup fix — scheduled_for column
+### Vacation editing (bug fix)
 
-The `notification_log` was missing a `scheduled_for` timestamp, so the dedup check keyed only on `item_id`. Rescheduling an appointment blocked the new reminder because the old log row matched. Fixed by:
+- Created `src/screens/app/EditVacationScreen.tsx` — same form as Add, pre-populated from existing data, calls `updateVacation`, no delete button
+- Added `EditVacation: { vacationId: string }` route to `AppStackParamList` and `AppNavigator`
+- Made vacation cards tappable in **CalendarScreen** (day-panel agenda list) and **DayDetailScreen** — both navigate to `EditVacation`; save button disabled for non-owners (owner = `vacation.user_id === currentUserId`)
+- Root cause of "no reaction": original code had an owner-only gate using `isOwner` check that silently fell through; replaced with always-tappable cards (auth enforced in EditVacationScreen UI + Supabase RLS on save)
 
-- Adding `scheduled_for timestamptz` to `notification_log`
-- Passing `starts_at` / task `due_date+start_time` through `send-reminders` → `notify` → log
-- Dedup now checks `(item_id, scheduled_for)` — rescheduling always gets a fresh reminder
+### Default appointment invitee
 
-### Task reminder fixes
+- `AddAppointmentScreen`: `inviteeIds` now initialises with `[session.user.id]` so the current user is pre-selected in the "With" list when creating a new appointment. Removable. Edit mode unaffected (useEffect overwrites with saved value).
 
-Task reminders were broken in two ways:
+### Custom reminder picker
 
-1. `start_time` was stored as local time (CEST) — the server-side RPC treated it as UTC, firing 2 hours late
-2. The RPC used `due_date > now()` on a date-only field (midnight UTC), which is already false by morning
-3. `reminder_offset_minutes` was not being saved for date-only tasks (no start_time)
+- `ReminderPicker`: added **Custom** chip after the 5 presets
+- Custom panel: `TextInput` (number-pad, 1–99) + unit dropdown (min / hours / days) — inline expanding, connected border styling
+- Done button computes `num × multiplier` minutes and calls the existing `onChange` callback — no changes needed anywhere else
+- Round-trips correctly: opening Custom when a custom value is already saved pre-fills the fields
 
-Fixed by:
+### Reminder save bug (stale closure)
 
-- `timeToString` now uses `getUTCHours/getUTCMinutes` — start_time stored as UTC
-- `parseTimeString` uses `setUTCHours` so round-trip is correct; `toLocaleTimeString` still shows local time
-- RPC now combines `due_date::date + start_time` as UTC timestamp for the trigger window
-- Dedup keyed on the combined timestamp
-- ReminderPicker shows "Set a time first" and is disabled when no start_time is set
-- Existing 3 tasks migrated: subtracted 2h to convert CEST → UTC
+- `reminder_offset_minutes` was missing from the `useCallback` dependency array in both `AddAppointmentScreen` and `AddTaskScreen`
+- Effect: `handleSave` always captured the initial `null` and wrote `null` to the DB regardless of what was selected
+- Fixed by adding `reminderOffsetMinutes` to both dependency arrays
 
-### Battery optimization prompt temporarily removed
+### Short reminder notification bug (RPC fix)
 
-`expo-intent-launcher` is a new native module — installing it without a rebuild caused a crash. Removed the prompt from Settings until the next `npx expo run:android` rebuild.
-
-### Multi-user token registration
-
-Confirmed architecture is correct:
-
-- Each user's FCM token is registered on every app launch via `registerPushToken()` in `AuthContext`
-- `notify` Edge Function looks up tokens for all `user_ids` passed to it
-- `reminders_enabled` is checked per-user server-side in `notify`
+- Appointments / tasks with reminder offsets shorter than the cron interval (5 min) were silently skipped
+- Root cause: RPC had `starts_at > now()` — if the cron fired even 1 minute after a short-reminder appointment started, the row was excluded
+- Fixed both `get_due_appointment_reminders` and `get_due_task_reminders`: `> now()` → `> now() - interval '5 minutes'`
+- Deployed directly via `supabase db query`; migration file updated to match
+- Deduplication via `notification_log (item_id, scheduled_for)` prevents double-sends
 
 ---
 
 ## To Implement Next Session
 
-- **Native rebuild required** for battery optimization prompt: `npx expo run:android` with the usual env vars
 - **Vacation & collapsible calendar** (F16) — design in `docs/designs/design-vacation-calendar.md`
+- **Native rebuild** (when convenient): needed to enable battery optimization prompt in Settings (`expo-intent-launcher`)
 
 ---
 

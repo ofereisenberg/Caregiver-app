@@ -38,14 +38,24 @@ function formatWhen(startsAt: string, endsAt: string | null, isFullDay: boolean)
   return `${formatDate(startsAt)} · ${timeRange}`;
 }
 
-function formatRecurrence(recurrence: string | null): string | null {
+function formatRecurrence(recurrence: string | null): string {
   const labels: Record<string, string> = {
     daily: 'Every day',
     weekly: 'Every week',
     monthly: 'Every month',
     yearly: 'Every year',
   };
-  return recurrence ? (labels[recurrence] ?? recurrence) : null;
+  return recurrence ? (labels[recurrence] ?? recurrence) : 'None';
+}
+
+function formatReminder(minutes: number | null): string {
+  if (minutes === null) return 'None';
+  if (minutes === 0) return 'At start';
+  if (minutes < 60) return `${minutes} minutes before`;
+  if (minutes === 60) return '1 hour before';
+  if (minutes < 1440) return `${minutes / 60} hours before`;
+  if (minutes === 1440) return '1 day before';
+  return `${minutes / 1440} days before`;
 }
 
 export function AppointmentDetailScreen() {
@@ -96,6 +106,7 @@ export function AppointmentDetailScreen() {
   }
 
   const recurrenceLabel = formatRecurrence(appointment.recurrence);
+  const reminderLabel = formatReminder(appointment.reminder_offset_minutes);
 
   return (
     <View style={styles.container}>
@@ -140,24 +151,27 @@ export function AppointmentDetailScreen() {
               </ScaledText>
             </View>
           </View>
-          {appointment.location ? (
-            <>
-              <View style={styles.rowDivider} />
-              <View style={styles.fieldRow}>
-                <ScaledText style={styles.fieldLabel}>Location</ScaledText>
-                <ScaledText style={styles.fieldValue} numberOfLines={2}>{appointment.location}</ScaledText>
-              </View>
-            </>
-          ) : null}
-          {recurrenceLabel ? (
-            <>
-              <View style={styles.rowDivider} />
-              <View style={styles.fieldRow}>
-                <ScaledText style={styles.fieldLabel}>Repeat</ScaledText>
-                <ScaledText style={styles.fieldValue}>{recurrenceLabel}</ScaledText>
-              </View>
-            </>
-          ) : null}
+          <View style={styles.rowDivider} />
+          <View style={styles.fieldRow}>
+            <ScaledText style={styles.fieldLabel}>Location</ScaledText>
+            <ScaledText style={[styles.fieldValue, !appointment.location && styles.fieldValueMuted]} numberOfLines={2}>
+              {appointment.location ?? 'None'}
+            </ScaledText>
+          </View>
+          <View style={styles.rowDivider} />
+          <View style={styles.fieldRow}>
+            <ScaledText style={styles.fieldLabel}>Repeat</ScaledText>
+            <ScaledText style={[styles.fieldValue, !appointment.recurrence && styles.fieldValueMuted]}>
+              {recurrenceLabel}
+            </ScaledText>
+          </View>
+          <View style={styles.rowDivider} />
+          <View style={styles.fieldRow}>
+            <ScaledText style={styles.fieldLabel}>Reminder</ScaledText>
+            <ScaledText style={[styles.fieldValue, appointment.reminder_offset_minutes === null && styles.fieldValueMuted]}>
+              {reminderLabel}
+            </ScaledText>
+          </View>
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
             <ScaledText style={styles.fieldLabel}>Visibility</ScaledText>
@@ -277,6 +291,7 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sans, color: theme.colors.textSecondary },
   fieldValueRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   fieldValue: { fontSize: theme.fontSize.body, fontFamily: theme.fontFamily.sansSemiBold, fontWeight: theme.fontWeight.semibold, color: theme.colors.textPrimary },
+  fieldValueMuted: { fontFamily: theme.fontFamily.sans, fontWeight: theme.fontWeight.regular, color: theme.colors.textMuted },
   assigneeAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.sageTint, alignItems: 'center', justifyContent: 'center' },
   assigneeAvatarText: { fontSize: theme.fontSize.micro, fontFamily: theme.fontFamily.sansBold, fontWeight: theme.fontWeight.bold, color: theme.colors.sageDark },
   rowDivider: { height: 1, backgroundColor: theme.colors.divider, marginHorizontal: theme.spacing.lg },

@@ -154,7 +154,7 @@ export function AddTaskScreen() {
     } else {
       navigation.goBack();
     }
-  }, [title, circle, session, repeat, assigneeId, dueDate, onlyMe, route.params, navigation]);
+  }, [title, circle, session, repeat, assigneeId, dueDate, onlyMe, reminderOffsetMinutes, route.params, navigation]);
 
   const vacationWarning = useMemo(() => {
     if (!assigneeId || !dueDate) return null;

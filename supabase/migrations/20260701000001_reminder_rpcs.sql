@@ -36,7 +36,7 @@ AS $$
     AND t.start_time IS NOT NULL
     AND t.completed = false
     AND t.assignee IS NOT NULL
-    AND task_time > now()
+    AND task_time > now() - interval '5 minutes'
     AND (task_time - (t.reminder_offset_minutes * interval '1 minute')) <= now()
     AND (task_time - (t.reminder_offset_minutes * interval '1 minute')) > now() - interval '5 minutes'
     AND NOT EXISTS (
@@ -80,7 +80,7 @@ AS $$
   FROM appointments a
   WHERE
     a.reminder_offset_minutes IS NOT NULL
-    AND a.starts_at > now()
+    AND a.starts_at > now() - interval '5 minutes'
     AND (a.starts_at - (a.reminder_offset_minutes * interval '1 minute')) <= now()
     AND (a.starts_at - (a.reminder_offset_minutes * interval '1 minute')) > now() - interval '5 minutes'
     AND NOT EXISTS (
