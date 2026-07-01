@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '../services/supabase';
-import { ExternalContact, getExternalContacts } from '../services/externalContacts';
+import { getExternalContacts } from '../services/externalContacts';
+import { ExternalContact } from '../types/ExternalContact';
 
 interface UseExternalContactsResult {
   contacts: ExternalContact[];

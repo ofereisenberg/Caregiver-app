@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AppStackParamList } from '../../navigation/types';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
@@ -31,7 +33,7 @@ function initials(name: string): string {
 }
 
 export function CircleAdminScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { session } = useAuth();
   const { circle, members, loading } = useCircle();
   const { contacts } = useExternalContacts(circle?.id ?? null);
@@ -84,7 +86,7 @@ export function CircleAdminScreen() {
           <React.Fragment key={contact.id}>
             <TouchableOpacity
               style={styles.memberRow}
-              onPress={() => navigation.navigate('AddEditExternalContact' as never, { contactId: contact.id } as never)}
+              onPress={() => navigation.navigate('AddEditExternalContact', { contactId: contact.id })}
             >
               <View style={[styles.avatar, styles.avatarExternal]}>
                 <Text style={[styles.avatarText, styles.avatarTextExternal]}>

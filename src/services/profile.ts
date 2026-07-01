@@ -27,3 +27,11 @@ export async function updateRemindersEnabled(userId: string, enabled: boolean): 
     .eq('id', userId);
   return { error: error?.message ?? null };
 }
+
+export async function updateLanguage(userId: string, language: 'de' | 'en'): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('user_profile')
+    .update({ language })
+    .eq('id', userId);
+  return { error: error?.message ?? null };
+}

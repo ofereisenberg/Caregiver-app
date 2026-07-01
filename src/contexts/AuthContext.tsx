@@ -6,6 +6,8 @@ import { supabase } from '../services/supabase';
 import { signOut as authSignOut } from '../services/auth';
 import { getUserCircles, setActiveCircle } from '../services/circle';
 import { registerPushToken } from '../services/notifications';
+import i18n, { AppLanguage, getPendingLanguage, setPendingLanguage } from '../i18n';
+import { updateLanguage } from '../services/profile';
 
 export type SetupStage =
   | 'loading'
@@ -41,13 +43,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkSetup = useCallback(async (sess: Session) => {
     const { data: profile } = await supabase
       .from('user_profile')
-      .select('display_name, active_circle_id')
+      .select('display_name, active_circle_id, language')
       .eq('id', sess.user.id)
       .maybeSingle();
 
     if (!profile || !profile.display_name) {
+      // New user: if they picked a language on the picker screen, sync it now.
+      const pending = getPendingLanguage();
+      if (pending) {
+        await updateLanguage(sess.user.id, pending);
+        await i18n.changeLanguage(pending);
+        setPendingLanguage(null);
+      }
       setSetupStage('needs_profile');
       return;
+    }
+
+    // Returning user: apply their saved language preference.
+    const savedLang = (profile.language ?? 'de') as AppLanguage;
+    if (i18n.language !== savedLang) {
+      await i18n.changeLanguage(savedLang);
     }
 
     const { data: circles } = await getUserCircles(sess.user.id);
