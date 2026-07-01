@@ -6,36 +6,42 @@
 
 ## Current Status
 
-i18n (F9) is nearly complete. M1–M8 are done. M7 (settings screens) is the only remaining milestone. M9 and M10 (push notifications and email) are deferred post-MVP.
+i18n (F9) is complete through M8. M9 and M10 (push notifications and email) are deferred until the notification/email infrastructure is built.
 
-Vacation & collapsible calendar features are fully implemented (screens, hooks, service, calendar rendering). Just needs i18n strings (covered by M7 if applicable).
+All core and settings screens are fully translated. Formatters are in place.
 
 ---
 
 ## What Was Done Last Session
 
-**Completed the remaining i18n string work across all core screens:**
+**Completed M7 — Translate Settings Screens (all screens):**
 
-- **`ReminderPicker.tsx`** — fully translated: "Remind me", "Set a time first", "None", "Custom", "Done", all 5 preset chip labels (using existing `appointments.reminderXxx` keys), unit dropdown labels. Replaced hardcoded `PRESETS` array with `PRESET_MINUTES` (numbers only). `formatReminder` and `presetLabel` now live inside component using `t()`. `unitLabels` record maps unit key → translated label.
-- **`DayDetailScreen.tsx`** — "Nothing on this day", "On vacation", "With:" prefix, "Appointments", "Tasks due"
-- **`AddVacationScreen.tsx` / `EditVacationScreen.tsx`** — headings, title placeholder, "From"/"Until", "With", "Nobody", person count (pluralised), save buttons
-- **`CalendarScreen.tsx`** — screen title "Calendar", "Expand"/"Collapse" toggle, "Nothing on this day", "Appointment"/"Vacation" FAB labels, day-letter headers (now reads from `calendar.dayLetters`). Added `LocaleConfig` setup via `useEffect` so `react-native-calendars` Calendar component uses correct month/day names in DE and EN.
-- **`en.json` / `de.json`** — 22 new keys added to `appointments` and `calendar` namespaces.
+- **`UserSettingsScreen.tsx`** — screen title, section headers (Account, Text size, Language, Notifications, Google Calendar, Circles), row labels (Name, Email, Reminders + subtitle, Sync appointments, Coming soon), menu items (Create circle, Join with code), member count pluralisation, sign-out alert, could-not-save alert. Language picker chips now use `language.german` / `language.english` keys.
+- **`CircleAdminScreen.tsx`** — back label, circle fallback name, section headers (Members, External contacts, Invites), member name fallback + "(you)" suffix, role labels (Admin/Member), "External" placeholder, Add external contact, Manage invites.
+- **`AddEditExternalContactScreen.tsx`** — back label, screen title (Add/Edit modes), all 3 section labels, all 3 input placeholders, Remove contact alert, Save changes / Add contact button, Remove from circle button.
+- **`JoinCircleScreen.tsx`** — back label, screen title, subtitle, placeholder (reused `auth.inviteCodePlaceholder`), validation error (reused `auth.errorEnterInviteCode`), button (reused `auth.joinCircle`).
+- **`CreateCircleScreen.tsx`** — back label, screen title, subtitle, placeholder, validation error (reused `auth.errorCircleName`), button (reused `auth.createCircleButton`).
+- **`en.json` / `de.json`** — 15 new `settings.*` keys and 21 new `circleAdmin.*` keys, plus 4 additional keys (`joinCircleSubtitle`, `newCircleTitle`, `newCircleSubtitle`, `newCirclePlaceholder`).
 
 TypeScript check passed clean after all edits.
 
 ---
 
-## Next: M7 — Translate Settings Screens
+## Next: M9 & M10 — Server-side Translation (Deferred)
 
-The following screens still have hardcoded English strings:
+Blocked until notification and email infrastructure is built (Feature #1 and #14).
 
-- **`UserSettingsScreen.tsx`** — profile section, language selector, circle list, sign-out
-- **`CircleAdminScreen.tsx`** — member list, invite code, copy/share, remove member confirm — check if already translated (circleAdmin namespace exists in JSON)
-- **`AddEditExternalContactScreen.tsx`** (new, untracked) — "Save changes" / "Add contact" on line 186, likely other strings
-- Any remaining auth screens if not already done
+### M9 — Push notifications
 
-Also worth checking at runtime: **"Invalid date"** was reported by the user on the task screen. It's not a hardcoded string — it's JS `Date.toLocaleDateString()` output on an invalid Date object. Likely triggered by a formatter being called with a null/undefined input that isn't guarded. Trace it during testing.
+- Update reminder notification Edge Function to look up `user_profile.language` before composing text
+- Add German and English string variants for all notification types
+- Verify end-to-end: German user receives German notification, English user receives English
+
+### M10 — Magic link email
+
+- Update Resend email template/Edge Function to look up `user_profile.language`
+- Add German and English body/subject variants
+- Fall back to German when `language` is null (first invite before preference is set)
 
 ---
 

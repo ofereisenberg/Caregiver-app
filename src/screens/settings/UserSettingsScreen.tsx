@@ -12,6 +12,7 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +31,7 @@ export function UserSettingsScreen() {
   const { circles, refresh: refreshCircles } = useUserCircles();
   const { scaleKey, setScale } = useFontScale();
   const { currentLanguage, setLanguage } = useLanguage();
+  const { t } = useTranslation();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -62,7 +64,7 @@ export function UserSettingsScreen() {
     const { error } = await updateDisplayName(session.user.id, nameInput.trim());
     setSavingName(false);
     if (error) {
-      Alert.alert('Could not save', error);
+      Alert.alert(t('settings.couldNotSave'), error);
     } else {
       setEditingName(false);
       await reload();
@@ -74,9 +76,9 @@ export function UserSettingsScreen() {
   }
 
   function handleSignOut() {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: signOut },
+    Alert.alert(t('settings.signOutTitle'), t('settings.signOutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.signOut'), style: 'destructive', onPress: signOut },
     ]);
   }
 
@@ -90,12 +92,12 @@ export function UserSettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <ScaledText style={styles.screenTitle}>Settings</ScaledText>
+      <ScaledText style={styles.screenTitle}>{t('settings.screenTitle')}</ScaledText>
 
-      <ScaledText style={styles.sectionLabel}>ACCOUNT</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('settings.sectionAccount')}</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
-          <ScaledText style={styles.rowLabel}>Name</ScaledText>
+          <ScaledText style={styles.rowLabel}>{t('settings.nameLabel')}</ScaledText>
           {editingName ? (
             <View style={styles.nameEditRow}>
               <TextInput
@@ -129,12 +131,12 @@ export function UserSettingsScreen() {
         </View>
         <View style={styles.rowDivider} />
         <View style={styles.row}>
-          <ScaledText style={styles.rowLabel}>Email</ScaledText>
+          <ScaledText style={styles.rowLabel}>{t('settings.emailLabel')}</ScaledText>
           <ScaledText style={styles.rowValueMuted}>{session?.user?.email ?? ''}</ScaledText>
         </View>
       </View>
 
-      <ScaledText style={styles.sectionLabel}>TEXT SIZE</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('settings.sectionTextSize')}</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.scaleOptions}>
@@ -157,7 +159,7 @@ export function UserSettingsScreen() {
         </View>
       </View>
 
-      <ScaledText style={styles.sectionLabel}>LANGUAGE</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('settings.sectionLanguage')}</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.scaleOptions}>
@@ -171,7 +173,7 @@ export function UserSettingsScreen() {
                   activeOpacity={0.75}
                 >
                   <ScaledText style={[styles.scaleChipLabel, active && styles.scaleChipLabelActive]}>
-                    {lang === 'de' ? 'Deutsch' : 'English'}
+                    {lang === 'de' ? t('language.german') : t('language.english')}
                   </ScaledText>
                 </TouchableOpacity>
               );
@@ -180,12 +182,12 @@ export function UserSettingsScreen() {
         </View>
       </View>
 
-      <ScaledText style={styles.sectionLabel}>NOTIFICATIONS</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('settings.sectionNotifications')}</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLabelBlock}>
-            <ScaledText style={styles.rowLabel}>Reminders</ScaledText>
-            <ScaledText style={styles.rowValueMuted}>Notify me before tasks and appointments</ScaledText>
+            <ScaledText style={styles.rowLabel}>{t('settings.remindersLabel')}</ScaledText>
+            <ScaledText style={styles.rowValueMuted}>{t('settings.remindersSubtitle')}</ScaledText>
           </View>
           <Switch
             value={profile?.reminders_enabled ?? false}
@@ -200,12 +202,12 @@ export function UserSettingsScreen() {
         </View>
       </View>
 
-      <ScaledText style={styles.sectionLabel}>GOOGLE CALENDAR</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('settings.sectionGoogleCalendar')}</ScaledText>
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLabelBlock}>
-            <ScaledText style={styles.rowLabel}>Sync appointments</ScaledText>
-            <ScaledText style={styles.comingSoon}>Coming soon</ScaledText>
+            <ScaledText style={styles.rowLabel}>{t('settings.syncAppointmentsLabel')}</ScaledText>
+            <ScaledText style={styles.comingSoon}>{t('settings.comingSoon')}</ScaledText>
           </View>
           <Switch
             value={false}
@@ -217,18 +219,18 @@ export function UserSettingsScreen() {
       </View>
 
       <View style={styles.sectionHeaderRow}>
-        <ScaledText style={styles.sectionLabel}>CIRCLES</ScaledText>
+        <ScaledText style={styles.sectionLabel}>{t('settings.sectionCircles')}</ScaledText>
         <Menu>
           <MenuTrigger>
             <Ionicons name="add" size={20} color={theme.colors.sage} />
           </MenuTrigger>
           <MenuOptions customStyles={circleMenuStyles}>
             <MenuOption onSelect={() => navigation.navigate('CreateCircle' as never)}>
-              <ScaledText style={styles.menuItem}>Create circle</ScaledText>
+              <ScaledText style={styles.menuItem}>{t('settings.createCircle')}</ScaledText>
             </MenuOption>
             <View style={styles.menuDivider} />
             <MenuOption onSelect={() => navigation.navigate('JoinCircle' as never)}>
-              <ScaledText style={styles.menuItem}>Join with code</ScaledText>
+              <ScaledText style={styles.menuItem}>{t('settings.joinWithCode')}</ScaledText>
             </MenuOption>
           </MenuOptions>
         </Menu>
@@ -251,7 +253,7 @@ export function UserSettingsScreen() {
                     {circle.name}
                   </ScaledText>
                   <ScaledText style={styles.memberCount}>
-                    {circle.memberCount} {circle.memberCount === 1 ? 'member' : 'members'}
+                    {t('settings.memberCount', { count: circle.memberCount })}
                   </ScaledText>
                 </View>
                 {isSwitching ? (
@@ -268,7 +270,7 @@ export function UserSettingsScreen() {
       </View>
 
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <ScaledText style={styles.signOutLabel}>Sign out</ScaledText>
+        <ScaledText style={styles.signOutLabel}>{t('settings.signOut')}</ScaledText>
       </TouchableOpacity>
     </ScrollView>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
@@ -11,6 +12,7 @@ import { joinCircleWithToken } from '../../services/circle';
 export function JoinCircleScreen() {
   const navigation = useNavigation();
   const { recheckSetup } = useAuth();
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export function JoinCircleScreen() {
   async function handleJoin() {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) {
-      setError('Please enter an invite code.');
+      setError(t('auth.errorEnterInviteCode'));
       return;
     }
     setLoading(true);
@@ -37,16 +39,16 @@ export function JoinCircleScreen() {
     <View style={styles.container}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <ScaledText style={styles.backLabel}>Settings</ScaledText>
+        <ScaledText style={styles.backLabel}>{t('settings.screenTitle')}</ScaledText>
       </TouchableOpacity>
 
-      <ScaledText style={styles.screenTitle}>Join a circle</ScaledText>
-      <ScaledText style={styles.subtitle}>Enter the invite code shared with you.</ScaledText>
+      <ScaledText style={styles.screenTitle}>{t('settings.joinCircle')}</ScaledText>
+      <ScaledText style={styles.subtitle}>{t('settings.joinCircleSubtitle')}</ScaledText>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Enter invite code"
+          placeholder={t('auth.inviteCodePlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           value={code}
           onChangeText={(t) => { setCode(t); setError(null); }}
@@ -66,7 +68,7 @@ export function JoinCircleScreen() {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.buttonLabel}>Join circle</ScaledText>
+            <ScaledText style={styles.buttonLabel}>{t('auth.joinCircle')}</ScaledText>
           )}
         </TouchableOpacity>
       </View>

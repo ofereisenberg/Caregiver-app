@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
@@ -9,6 +10,7 @@ import { createCareCircle } from '../../services/circle';
 
 export function CreateCircleScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +18,7 @@ export function CreateCircleScreen() {
   async function handleCreate() {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Please enter a name for this circle.');
+      setError(t('auth.errorCircleName'));
       return;
     }
     setLoading(true);
@@ -34,16 +36,16 @@ export function CreateCircleScreen() {
     <View style={styles.container}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <ScaledText style={styles.backLabel}>Settings</ScaledText>
+        <ScaledText style={styles.backLabel}>{t('settings.screenTitle')}</ScaledText>
       </TouchableOpacity>
 
-      <ScaledText style={styles.screenTitle}>New circle</ScaledText>
-      <ScaledText style={styles.subtitle}>Give it a name that describes the group or purpose.</ScaledText>
+      <ScaledText style={styles.screenTitle}>{t('settings.newCircleTitle')}</ScaledText>
+      <ScaledText style={styles.subtitle}>{t('settings.newCircleSubtitle')}</ScaledText>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="e.g. Family tasks"
+          placeholder={t('settings.newCirclePlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           value={name}
           onChangeText={(t) => { setName(t); setError(null); }}
@@ -62,7 +64,7 @@ export function CreateCircleScreen() {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.buttonLabel}>Create circle</ScaledText>
+            <ScaledText style={styles.buttonLabel}>{t('auth.createCircleButton')}</ScaledText>
           )}
         </TouchableOpacity>
       </View>

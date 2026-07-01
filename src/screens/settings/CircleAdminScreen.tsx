@@ -11,16 +11,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../navigation/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
 import { useExternalContacts } from '../../hooks/useExternalContacts';
-
-function roleLabel(role: string) {
-  return role === 'admin' ? 'Admin' : 'Member';
-}
 
 function initials(name: string): string {
   return name
@@ -37,6 +34,7 @@ export function CircleAdminScreen() {
   const { session } = useAuth();
   const { circle, members, loading } = useCircle();
   const { contacts } = useExternalContacts(circle?.id ?? null);
+  const { t } = useTranslation();
 
   if (loading) {
     return (
@@ -50,12 +48,12 @@ export function CircleAdminScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <ScaledText style={styles.backLabel}>Settings</ScaledText>
+        <ScaledText style={styles.backLabel}>{t('settings.screenTitle')}</ScaledText>
       </TouchableOpacity>
 
-      <ScaledText style={styles.screenTitle}>{circle?.name ?? 'Care Circle'}</ScaledText>
+      <ScaledText style={styles.screenTitle}>{circle?.name ?? t('circleAdmin.defaultName')}</ScaledText>
 
-      <ScaledText style={styles.sectionLabel}>MEMBERS</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('circleAdmin.membersSection')}</ScaledText>
       <View style={styles.card}>
         {members.map((m, index) => {
           const isSelf = m.user_id === session?.user?.id;
@@ -69,9 +67,11 @@ export function CircleAdminScreen() {
                 </View>
                 <View style={styles.memberInfo}>
                   <ScaledText style={styles.memberName}>
-                    {m.displayName || 'Unnamed'}{isSelf ? ' (you)' : ''}
+                    {m.displayName || t('circleAdmin.unnamed')}{isSelf ? ` (${t('circleAdmin.you')})` : ''}
                   </ScaledText>
-                  <ScaledText style={styles.memberRole}>{roleLabel(m.role)}</ScaledText>
+                  <ScaledText style={styles.memberRole}>
+                    {m.role === 'admin' ? t('circleAdmin.roleAdmin') : t('circleAdmin.roleMember')}
+                  </ScaledText>
                 </View>
               </View>
               {index < members.length - 1 && <View style={styles.rowDivider} />}
@@ -80,7 +80,7 @@ export function CircleAdminScreen() {
         })}
       </View>
 
-      <ScaledText style={styles.sectionLabel}>EXTERNAL CONTACTS</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('circleAdmin.externalContactsSection')}</ScaledText>
       <View style={styles.card}>
         {contacts.map((contact, index) => (
           <React.Fragment key={contact.id}>
@@ -98,7 +98,7 @@ export function CircleAdminScreen() {
                 {contact.email ? (
                   <ScaledText style={styles.memberRole}>{contact.email}</ScaledText>
                 ) : (
-                  <ScaledText style={styles.memberRole}>External</ScaledText>
+                  <ScaledText style={styles.memberRole}>{t('circleAdmin.external')}</ScaledText>
                 )}
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.colors.textHairline} />
@@ -111,17 +111,17 @@ export function CircleAdminScreen() {
           style={styles.row}
           onPress={() => navigation.navigate('AddEditExternalContact' as never)}
         >
-          <ScaledText style={[styles.rowLabel, styles.addLabel]}>+ Add external contact</ScaledText>
+          <ScaledText style={[styles.rowLabel, styles.addLabel]}>{t('circleAdmin.addExternalContact')}</ScaledText>
         </TouchableOpacity>
       </View>
 
-      <ScaledText style={styles.sectionLabel}>INVITES</ScaledText>
+      <ScaledText style={styles.sectionLabel}>{t('circleAdmin.invitesSection')}</ScaledText>
       <View style={styles.card}>
         <TouchableOpacity
           style={styles.row}
           onPress={() => navigation.navigate('InviteManagement' as never)}
         >
-          <ScaledText style={styles.rowLabel}>Manage invites</ScaledText>
+          <ScaledText style={styles.rowLabel}>{t('circleAdmin.manageInvites')}</ScaledText>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.textHairline} />
         </TouchableOpacity>
       </View>

@@ -12,6 +12,7 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
@@ -35,6 +36,7 @@ export function AddEditExternalContactScreen() {
   const { session } = useAuth();
   const { circle } = useCircle();
 
+  const { t } = useTranslation();
   const contactId = route.params?.contactId;
   const isEditMode = !!contactId;
 
@@ -88,12 +90,12 @@ export function AddEditExternalContactScreen() {
   function handleDelete() {
     if (!contactId) return;
     Alert.alert(
-      'Remove contact',
-      `Remove ${existing?.display_name ?? 'this contact'} from the circle?`,
+      t('circleAdmin.removeContactTitle'),
+      t('circleAdmin.removeContactBody', { name: existing?.display_name ?? '' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('circleAdmin.removeContactButton'),
           style: 'destructive',
           onPress: async () => {
             const { error: deleteError } = await deleteExternalContact(contactId);
@@ -127,18 +129,18 @@ export function AddEditExternalContactScreen() {
       >
         <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-          <ScaledText style={styles.backLabel}>Circle</ScaledText>
+          <ScaledText style={styles.backLabel}>{t('circleAdmin.backLabel')}</ScaledText>
         </TouchableOpacity>
 
         <ScaledText style={styles.screenTitle}>
-          {isEditMode ? 'Edit contact' : 'Add external contact'}
+          {isEditMode ? t('circleAdmin.editContact') : t('circleAdmin.addContact')}
         </ScaledText>
 
-        <ScaledText style={styles.sectionLabel}>NAME</ScaledText>
+        <ScaledText style={styles.sectionLabel}>{t('circleAdmin.nameSectionLabel')}</ScaledText>
         <View style={styles.card}>
           <TextInput
             style={styles.input}
-            placeholder="Full name or role (e.g. Dr. Müller)"
+            placeholder={t('circleAdmin.namePlaceholder')}
             placeholderTextColor={theme.colors.textFaint}
             value={displayName}
             onChangeText={setDisplayName}
@@ -146,11 +148,11 @@ export function AddEditExternalContactScreen() {
           />
         </View>
 
-        <ScaledText style={styles.sectionLabel}>EMAIL (OPTIONAL)</ScaledText>
+        <ScaledText style={styles.sectionLabel}>{t('circleAdmin.emailSectionLabel')}</ScaledText>
         <View style={styles.card}>
           <TextInput
             style={styles.input}
-            placeholder="For future invite to the circle"
+            placeholder={t('circleAdmin.emailPlaceholder')}
             placeholderTextColor={theme.colors.textFaint}
             value={email}
             onChangeText={setEmail}
@@ -159,11 +161,11 @@ export function AddEditExternalContactScreen() {
           />
         </View>
 
-        <ScaledText style={styles.sectionLabel}>NOTES (OPTIONAL)</ScaledText>
+        <ScaledText style={styles.sectionLabel}>{t('circleAdmin.notesSectionLabel')}</ScaledText>
         <View style={styles.card}>
           <TextInput
             style={[styles.input, styles.notesInput]}
-            placeholder="Phone number, availability, etc."
+            placeholder={t('circleAdmin.notesPlaceholder')}
             placeholderTextColor={theme.colors.textFaint}
             value={notes}
             onChangeText={setNotes}
@@ -183,14 +185,14 @@ export function AddEditExternalContactScreen() {
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
             <ScaledText style={styles.saveButtonLabel}>
-              {isEditMode ? 'Save changes' : 'Add contact'}
+              {isEditMode ? t('circleAdmin.saveChanges') : t('circleAdmin.addContactButton')}
             </ScaledText>
           )}
         </TouchableOpacity>
 
         {isEditMode && isOwner && (
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <ScaledText style={styles.deleteButtonLabel}>Remove from circle</ScaledText>
+            <ScaledText style={styles.deleteButtonLabel}>{t('circleAdmin.removeFromCircle')}</ScaledText>
           </TouchableOpacity>
         )}
       </ScrollView>
