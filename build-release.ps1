@@ -38,6 +38,31 @@ if ([string]::IsNullOrWhiteSpace($NewVersion)) {
 $NewVersionCode = $CurrentVersionCode + 1
 
 Write-Host ""
+
+# --- Prompt for release notes (EN + DE) --------------------------------------
+
+Write-Host "  Release notes -- English"
+Write-Host "  (Type one line at a time. Press Enter on an empty line when done.)"
+Write-Host ""
+$NotesEn = @()
+while ($true) {
+    $line = Read-Host "  EN"
+    if ([string]::IsNullOrEmpty($line)) { break }
+    $NotesEn += $line
+}
+
+Write-Host ""
+Write-Host "  Release notes -- Deutsch"
+Write-Host "  (Zeile fuer Zeile eingeben. Leere Zeile zum Beenden.)"
+Write-Host ""
+$NotesDe = @()
+while ($true) {
+    $line = Read-Host "  DE"
+    if ([string]::IsNullOrEmpty($line)) { break }
+    $NotesDe += $line
+}
+
+Write-Host ""
 Write-Host "  Building v$NewVersion (versionCode $NewVersionCode) ..."
 Write-Host ""
 
@@ -83,6 +108,20 @@ $ApkSource = "$ProjectRoot\android\app\build\outputs\apk\release\app-release.apk
 $ApkDest   = "$ReleasesDir\caregiver-app-v$NewVersion.apk"
 Copy-Item $ApkSource $ApkDest
 
+$NotesDest = "$ReleasesDir\release-notes-v$NewVersion.txt"
+$NotesContent = @(
+    "v$NewVersion -- Release Notes",
+    ("=" * 40),
+    "",
+    "English",
+    ("-" * 40)
+) + $NotesEn + @(
+    "",
+    "Deutsch",
+    ("-" * 40)
+) + $NotesDe
+[System.IO.File]::WriteAllLines($NotesDest, $NotesContent, [System.Text.UTF8Encoding]::new($false))
+
 # --- Commit version bump and tag release -------------------------------------
 
 Write-Host ""
@@ -114,8 +153,9 @@ Write-Host "================================================" -ForegroundColor G
 Write-Host "  Build complete!" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  APK : $ApkDest"
-Write-Host "  Tag : v$NewVersion"
+Write-Host "  APK   : $ApkDest"
+Write-Host "  Notes : $NotesDest"
+Write-Host "  Tag   : v$NewVersion"
 Write-Host ""
 Write-Host "  Next steps:"
 Write-Host "    1. Upload the APK to Google Drive > Caregiver App > v$NewVersion"
