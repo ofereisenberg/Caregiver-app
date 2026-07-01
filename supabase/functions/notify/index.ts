@@ -9,6 +9,7 @@ interface NotifyPayload {
   data?: Record<string, string>;
   item_type?: string;
   item_id?: string;
+  scheduled_for?: string;
 }
 
 interface ServiceAccount {
@@ -86,7 +87,7 @@ async function getFcmAccessToken(sa: ServiceAccount): Promise<string> {
 serve(async (req) => {
   try {
     const payload: NotifyPayload = await req.json();
-    const { user_ids, notification_type, title, body, data, item_type, item_id } = payload;
+    const { user_ids, notification_type, title, body, data, item_type, item_id, scheduled_for } = payload;
 
     let query = supabase
       .from('user_profile')
@@ -161,6 +162,7 @@ serve(async (req) => {
           notification_type,
           item_type: item_type ?? null,
           item_id: item_id ?? null,
+          scheduled_for: scheduled_for ?? null,
           success,
           error_message: errorMessage,
         });

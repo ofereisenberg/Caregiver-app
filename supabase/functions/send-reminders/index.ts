@@ -15,6 +15,7 @@ async function callNotify(
   body: string,
   item_type: string,
   item_id: string,
+  scheduled_for: string,
 ) {
   if (!user_ids.length) return;
   const res = await fetch(NOTIFY_URL, {
@@ -30,6 +31,7 @@ async function callNotify(
       body,
       item_type,
       item_id,
+      scheduled_for,
       data: { item_type, item_id },
     }),
   });
@@ -54,6 +56,7 @@ serve(async () => {
       task.due_label,
       'task',
       task.id,
+      task.scheduled_for,
     );
   }
 
@@ -68,6 +71,7 @@ serve(async () => {
       appt.starts_label,
       'appointment',
       appt.id,
+      appt.scheduled_for,
     );
   }
 

@@ -19,6 +19,7 @@ CREATE TABLE notification_log (
   item_id           uuid,
   sent_at           timestamptz NOT NULL DEFAULT now(),
   success           boolean NOT NULL,
+  scheduled_for     timestamptz,
   error_message     text
 );
 
