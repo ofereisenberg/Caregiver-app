@@ -22,13 +22,15 @@ import { useProjectList } from '../../hooks/useProjectList';
 import { useTask } from '../../hooks/useTask';
 import { completeTask, deleteTask, updateTask } from '../../services/tasks';
 import { formatDueLabel, isTaskOverdue } from '../../utils/taskGrouping';
+import { ReminderPicker } from '../../components/ReminderPicker';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { toLocalISODate } from '../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'TaskDetail'>;
 
-type ExpandedRow = 'assignee' | 'repeat' | 'when' | 'project' | null;
+type ExpandedRow = 'assignee' | 'repeat' | 'when' | 'project' | 'reminder' | null;
 type TimePickerMode = 'start' | 'end';
 
 function formatTimeDisplay(d: Date): string {
@@ -79,6 +81,7 @@ export function TaskDetailScreen() {
   const [repeat, setRepeat] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
+  const [reminderOffsetMinutes, setReminderOffsetMinutes] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
@@ -102,6 +105,7 @@ export function TaskDetailScreen() {
       setStartTime(parseTimeString(task.start_time));
       setEndTime(parseTimeString(task.end_time));
       setVisibility(task.visibility);
+      setReminderOffsetMinutes(task.reminder_offset_minutes ?? null);
       setNoteText(task.progress_note ?? '');
       setProjectId(task.project_id ?? null);
     }
@@ -166,7 +170,7 @@ export function TaskDetailScreen() {
         onChange: async (_event, selected) => {
           if (selected) {
             setDueDate(selected);
-            await updateTask(taskId, { due_date: selected.toISOString().split('T')[0] });
+            await updateTask(taskId, { due_date: toLocalISODate(selected) });
           }
         },
       });
@@ -177,7 +181,7 @@ export function TaskDetailScreen() {
 
   async function handleIosDateChange(_event: DateTimePickerChangeEvent, selected: Date) {
     setDueDate(selected);
-    await updateTask(taskId, { due_date: selected.toISOString().split('T')[0] });
+    await updateTask(taskId, { due_date: toLocalISODate(selected) });
   }
 
   function handleTimePress(mode: TimePickerMode) {
@@ -388,7 +392,7 @@ export function TaskDetailScreen() {
           <TouchableOpacity style={styles.fieldRow} onPress={handleWhenPress}>
             <ScaledText style={styles.fieldLabel}>When</ScaledText>
             <View style={styles.fieldValueRow}>
-              <ScaledText style={styles.fieldValue}>{dueDate ? formatDueLabel(dueDate.toISOString().split('T')[0]) : 'No date'}</ScaledText>
+              <ScaledText style={styles.fieldValue}>{dueDate ? formatDueLabel(toLocalISODate(dueDate)) : 'No date'}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </View>
           </TouchableOpacity>
@@ -431,6 +435,17 @@ export function TaskDetailScreen() {
               <ScaledText style={styles.clearDateLabel}>Remove date</ScaledText>
             </TouchableOpacity>
           )}
+          <View style={styles.rowDivider} />
+          <ReminderPicker
+            value={reminderOffsetMinutes}
+            onChange={(minutes) => {
+              setReminderOffsetMinutes(minutes);
+              updateTask(taskId, { reminder_offset_minutes: minutes });
+            }}
+            isExpanded={expandedRow === 'reminder'}
+            onToggle={() => toggleRow('reminder')}
+          />
+
           <View style={styles.rowDivider} />
 
           {/* Visibility */}

@@ -20,6 +20,7 @@ import { useCircle } from '../../hooks/useCircle';
 import { createProject } from '../../services/projects';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { toLocalISODate } from '../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 
@@ -73,7 +74,7 @@ export function AddProjectScreen() {
       title: title.trim(),
       description: description.trim() || null,
       owner: ownerId,
-      due_date: dueDate ? dueDate.toISOString().split('T')[0] : null,
+      due_date: dueDate ? toLocalISODate(dueDate) : null,
       visibility: onlyMe ? 'private' : 'shared',
       circle_id: circle.id,
       status: 'not_started',

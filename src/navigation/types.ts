@@ -24,6 +24,7 @@ export type AppStackParamList = {
   ProjectDetail: { projectId: string };
   AddProject: undefined;
   AddVacation: undefined;
+  EditVacation: { vacationId: string };
   DayDetail: { dateKey: string };
   DailyDigest: undefined;
   CircleAdmin: undefined;

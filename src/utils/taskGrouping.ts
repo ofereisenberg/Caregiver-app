@@ -1,4 +1,5 @@
 import { Task } from '../services/tasks';
+import { parseDateOnly } from './dateUtils';
 
 export type TaskSectionKey = 'today' | 'thisWeek' | 'later' | 'done';
 
@@ -14,8 +15,7 @@ export function isTaskOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
+  const due = parseDateOnly(dueDate);
   return due < today;
 }
 
@@ -23,8 +23,7 @@ export function formatDueLabel(dueDate: string | null): string {
   if (!dueDate) return '';
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
+  const due = parseDateOnly(dueDate);
 
   const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -45,8 +44,8 @@ function sortByDateTime(a: Task, b: Task): number {
   if (!a.due_date && !b.due_date) return 0;
   if (!a.due_date) return -1;
   if (!b.due_date) return 1;
-  const dateA = new Date(a.due_date).getTime();
-  const dateB = new Date(b.due_date).getTime();
+  const dateA = parseDateOnly(a.due_date).getTime();
+  const dateB = parseDateOnly(b.due_date).getTime();
   if (dateA !== dateB) return dateA - dateB;
   if (!a.start_time && !b.start_time) return 0;
   if (!a.start_time) return -1;
@@ -70,8 +69,7 @@ export function groupTasksIntoSections(tasks: Task[]): TaskSection[] {
       laterItems.push(task);
       continue;
     }
-    const due = new Date(task.due_date);
-    due.setHours(0, 0, 0, 0);
+    const due = parseDateOnly(task.due_date);
 
     if (due <= today) {
       todayItems.push(task);

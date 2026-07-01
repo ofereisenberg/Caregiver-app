@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
@@ -18,7 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { FONT_MULTIPLIERS, FONT_SCALE_LABELS, FontScaleKey, useFontScale } from '../../contexts/FontScaleContext';
 import { useProfile } from '../../hooks/useProfile';
 import { useUserCircles } from '../../hooks/useUserCircles';
-import { updateDisplayName } from '../../services/profile';
+import { updateDisplayName, updateRemindersEnabled } from '../../services/profile';
 import { ScaledText } from '../../components/ScaledText';
 
 export function UserSettingsScreen() {
@@ -151,6 +153,31 @@ export function UserSettingsScreen() {
               );
             })}
           </View>
+        </View>
+      </View>
+
+      <ScaledText style={styles.sectionLabel}>NOTIFICATIONS</ScaledText>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.rowLabelBlock}>
+            <ScaledText style={styles.rowLabel}>Reminders</ScaledText>
+            <ScaledText style={styles.rowValueMuted}>Notify me before tasks and appointments</ScaledText>
+          </View>
+          <Switch
+            value={profile?.reminders_enabled ?? false}
+            onValueChange={async (enabled) => {
+              if (session?.user?.id) await updateRemindersEnabled(session.user.id, enabled);
+              if (enabled && Platform.OS === 'android') {
+                await IntentLauncher.startActivityAsync(
+                  IntentLauncher.ActivityAction.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                  { data: 'package:com.anonymous.caregiverapp' },
+                );
+              }
+              reload();
+            }}
+            trackColor={{ false: theme.colors.disabledBg, true: theme.colors.sage }}
+            thumbColor={theme.colors.surfaceElevated}
+          />
         </View>
       </View>
 

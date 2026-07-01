@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,19 +10,21 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
-import { createVacation } from '../../services/vacations';
+import { useVacations } from '../../hooks/useVacations';
+import { updateVacation } from '../../services/vacations';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 import { toLocalISODate } from '../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
+type Route = RouteProp<AppStackParamList, 'EditVacation'>;
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -30,12 +32,6 @@ function formatDate(date: Date): string {
 
 function toDateString(date: Date): string {
   return toLocalISODate(date);
-}
-
-function tomorrow(): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d;
 }
 
 function oneWeekLater(from: Date): Date {
@@ -46,24 +42,41 @@ function oneWeekLater(from: Date): Date {
 
 type DateField = 'start' | 'end';
 
-export function AddVacationScreen() {
+export function EditVacationScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<Route>();
+  const { vacationId } = route.params;
+
   const { session } = useAuth();
+  const currentUserId = session?.user.id ?? '';
   const { circle, members } = useCircle();
+  const { vacations } = useVacations(circle?.id ?? null);
+
+  const vacation = vacations.find((v) => v.id === vacationId);
+  const isOwner = vacation?.user_id === currentUserId;
 
   const titleRef = useRef<TextInput>(null);
   const [title, setTitle] = useState('');
-  const startDefault = tomorrow();
-  const [startDate, setStartDate] = useState<Date>(startDefault);
-  const [endDate, setEndDate] = useState<Date>(oneWeekLater(startDefault));
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(new Date());
   const [withMemberIds, setWithMemberIds] = useState<string[]>([]);
   const [iosDateField, setIosDateField] = useState<DateField | null>(null);
   const [expandWith, setExpandWith] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
-  const currentUserId = session?.user.id ?? '';
-  const otherMembers = members.filter((m) => m.user_id !== currentUserId);
+  useEffect(() => {
+    if (vacation && !initialized) {
+      setTitle(vacation.title);
+      setStartDate(new Date(vacation.start_date + 'T00:00:00'));
+      setEndDate(new Date(vacation.end_date + 'T00:00:00'));
+      setWithMemberIds((vacation.with_member_ids as string[]) ?? []);
+      setInitialized(true);
+    }
+  }, [vacation, initialized]);
+
+  const otherMembers = members.filter((m) => m.user_id !== vacation?.user_id);
 
   function openDatePicker(field: DateField) {
     const value = field === 'start' ? startDate : endDate;
@@ -107,12 +120,11 @@ export function AddVacationScreen() {
   }
 
   const handleSave = useCallback(async () => {
-    if (!title.trim() || !circle) return;
+    if (!title.trim() || !vacation) return;
     setSaving(true);
     setError(null);
 
-    const { error: saveError } = await createVacation({
-      circle_id: circle.id,
+    const { error: saveError } = await updateVacation(vacation.id, {
       title: title.trim(),
       start_date: toDateString(startDate),
       end_date: toDateString(endDate),
@@ -125,9 +137,17 @@ export function AddVacationScreen() {
     } else {
       navigation.goBack();
     }
-  }, [title, circle, startDate, endDate, withMemberIds, navigation]);
+  }, [title, vacation, startDate, endDate, withMemberIds, navigation]);
 
-  const canSave = title.trim().length > 0 && !saving;
+  const canSave = initialized && isOwner && title.trim().length > 0 && !saving;
+
+  if (!initialized) {
+    return (
+      <View style={[styles.sheet, styles.loadingContainer]}>
+        <ActivityIndicator color={theme.colors.sage} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -141,7 +161,7 @@ export function AddVacationScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <ScaledText style={styles.heading}>Add vacation</ScaledText>
+        <ScaledText style={styles.heading}>Edit vacation</ScaledText>
 
         <TextInput
           ref={titleRef}
@@ -248,7 +268,7 @@ export function AddVacationScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.addButtonLabel}>Save vacation</ScaledText>
+            <ScaledText style={styles.addButtonLabel}>Save changes</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -262,6 +282,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.borderRadius.modal,
     borderTopRightRadius: theme.borderRadius.modal,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   handle: {
     width: 36,

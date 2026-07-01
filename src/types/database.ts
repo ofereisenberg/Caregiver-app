@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -82,6 +82,7 @@ export type Database = {
           location: string | null
           project_id: string | null
           recurrence: string | null
+          reminder_offset_minutes: number | null
           starts_at: string
           title: string
           visibility: Database["public"]["Enums"]["visibility"]
@@ -98,6 +99,7 @@ export type Database = {
           location?: string | null
           project_id?: string | null
           recurrence?: string | null
+          reminder_offset_minutes?: number | null
           starts_at: string
           title: string
           visibility?: Database["public"]["Enums"]["visibility"]
@@ -114,6 +116,7 @@ export type Database = {
           location?: string | null
           project_id?: string | null
           recurrence?: string | null
+          reminder_offset_minutes?: number | null
           starts_at?: string
           title?: string
           visibility?: Database["public"]["Enums"]["visibility"]
@@ -219,6 +222,47 @@ export type Database = {
             columns: ["circle_id"]
             isOneToOne: false
             referencedRelation: "care_circle"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_log: {
+        Row: {
+          error_message: string | null
+          id: string
+          item_id: string | null
+          item_type: string | null
+          notification_type: string
+          sent_at: string
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          item_id?: string | null
+          item_type?: string | null
+          notification_type: string
+          sent_at?: string
+          success: boolean
+          user_id: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          item_id?: string | null
+          item_type?: string | null
+          notification_type?: string
+          sent_at?: string
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profile"
             referencedColumns: ["id"]
           },
         ]
@@ -352,6 +396,7 @@ export type Database = {
           progress_note: string | null
           project_id: string | null
           recurrence: string | null
+          reminder_offset_minutes: number | null
           start_time: string | null
           title: string
           visibility: Database["public"]["Enums"]["visibility"]
@@ -370,6 +415,7 @@ export type Database = {
           progress_note?: string | null
           project_id?: string | null
           recurrence?: string | null
+          reminder_offset_minutes?: number | null
           start_time?: string | null
           title: string
           visibility?: Database["public"]["Enums"]["visibility"]
@@ -388,6 +434,7 @@ export type Database = {
           progress_note?: string | null
           project_id?: string | null
           recurrence?: string | null
+          reminder_offset_minutes?: number | null
           start_time?: string | null
           title?: string
           visibility?: Database["public"]["Enums"]["visibility"]
@@ -427,6 +474,7 @@ export type Database = {
           last_digest_shown_at: string | null
           push_token: string | null
           push_token_updated_at: string | null
+          reminders_enabled: boolean
         }
         Insert: {
           active_circle_id?: string | null
@@ -438,6 +486,7 @@ export type Database = {
           last_digest_shown_at?: string | null
           push_token?: string | null
           push_token_updated_at?: string | null
+          reminders_enabled?: boolean
         }
         Update: {
           active_circle_id?: string | null
@@ -449,6 +498,7 @@ export type Database = {
           last_digest_shown_at?: string | null
           push_token?: string | null
           push_token_updated_at?: string | null
+          reminders_enabled?: boolean
         }
         Relationships: [
           {

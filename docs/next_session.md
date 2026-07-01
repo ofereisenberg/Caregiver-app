@@ -6,129 +6,56 @@
 
 ## Current Status
 
-Multi-circle support fully implemented. Design for F16 (vacation entries) and collapsible calendar agreed and documented in `docs/designs/design-vacation-calendar.md`. Implementation starts next.
+Reminders & push notification infrastructure (F1) is fully implemented and working end-to-end:
+- Cron fires every 5 minutes via pg_cron + pg_net
+- `send-reminders` Edge Function queries due reminders and calls `notify`
+- `notify` Edge Function sends FCM v1 push notifications and writes to `notification_log`
+- ReminderPicker UI wired into AddTask, TaskDetail, AddAppointment screens
+- Reminders toggle in Settings with automatic battery optimization prompt (Android)
+- Foreground notification handler set up so notifications show even when app is open
+- Timezone bug fixed: all date-only writes now use local timezone (not UTC)
 
-At the start of the implementation session, convert the checklist below to todos and mark each item done as you complete it.
-
----
-
-## Implementation Plan — Vacation & Collapsible Calendar
-
-### Phase 1 — Database & types
-
-- [ ] Create `vacation` table (id, circle_id, user_id, title, start_date, end_date, with_member_ids uuid[], created_at)
-- [ ] Add RLS: all circle members can read; only owner (user_id) can insert/update/delete
-- [ ] Run `supabase db push` and regenerate TypeScript types
-
-### Phase 2 — Service & hook
-
-- [ ] Create `services/vacations.ts` — getVacationsForCircle, createVacation, updateVacation, deleteVacation
-- [ ] Create `hooks/useVacations.ts` — fetches vacations for active circle, realtime subscription, clean up on unmount
-
-### Phase 3 — Add Vacation screen
-
-- [ ] Create `screens/app/AddVacationScreen.tsx` — title input, start date, end date, "with" multi-select from circle members
-- [ ] Add `AddVacation` to `AppStackParamList` and `AppNavigator`
-- [ ] Wire FAB or "+" button in CalendarScreen to open AddVacationScreen
-
-### Phase 4 — Collapsible calendar
-
-- [ ] Add expand/collapse state to `CalendarScreen`
-- [ ] Implement swipe-up/down gesture to toggle states
-- [ ] Implement swipe-left/right on calendar grid to move months (both states)
-- [ ] Collapsed state: render mini-month grid (M T W T F S S header, week-number left column, colored dots per cell)
-- [ ] Collapsed state: bottom day-event panel with selected day's items; swipe left/right moves day
-
-### Phase 5 — Expanded calendar
-
-- [ ] Expanded state: taller cells showing up to 3 items at 1–2 words each
-- [ ] "+X" overflow badge when a day has more than 3 items
-- [ ] Tapping any day cell opens DayDetailScreen (modal)
-
-### Phase 6 — Vacation rendering in calendar
-
-- [ ] Collapsed: red dot in each day cell within a vacation range
-- [ ] Expanded: full-width red background fill per cell in range; title text only in first cell of range
-
-### Phase 7 — Day Detail modal screen
-
-- [ ] Create `screens/app/DayDetailScreen.tsx` — modal, header with date, lists vacations/appointments/tasks with color labels, view-only
-- [ ] Add `DayDetail` to `AppStackParamList` and `AppNavigator` as modal
-
-### Phase 8 — Vacation assignment warning
-
-- [ ] In `AddTaskScreen`: check if assignee has a vacation covering the selected due date; show warning if so
-- [ ] In `AddAppointmentScreen`: same check for start date range
+Vacation & collapsible calendar design is agreed (`docs/designs/design-vacation-calendar.md`) — not yet implemented.
 
 ---
 
-## Previous session work (2026-06-28)
+## What Was Done This Session (2026-07-01)
 
----
+### Push notifications (F1) — implementation & debugging
 
-## What was done this session (2026-06-28)
+All phases from the previous session's implementation plan were completed. Key debugging discoveries:
 
-### Multi-circle support (F12)
+- `pg_net` extension was not enabled — cron was failing silently on every tick
+- `FIREBASE_SERVICE_ACCOUNT` secret was stored with malformed JSON from PowerShell minification — re-set via Python
+- FCM v1 requires `android.notification.channel_id` in the message payload for Android 8+ — notifications were silently dropped without it
+- `notify` Edge Function had no try/catch — crashed on bad secrets with no error surfaced to caller
+- `send-reminders` did not check the response from `notify` — added error logging
+- Samsung battery optimization was killing FCM background delivery — added automatic `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` prompt on Settings toggle
+- No foreground notification handler — added `Notifications.setNotificationHandler` in `services/notifications.ts`
 
-**Migration `20260628100000_active_circle.sql`**
-- Added `active_circle_id uuid REFERENCES care_circle(id)` (nullable) to `user_profile`
-- Applied via `supabase db push` — live in production
-- TypeScript types regenerated
+### Timezone bug fix
 
-**`src/services/circle.ts`**
-- `getUserCircles(userId)` — returns all circles the user belongs to
-- `setActiveCircle(userId, circleId)` — writes `active_circle_id` to `user_profile`
+All date-only values (`due_date`, `start_date`, `end_date`) were being written to the DB using `toISOString().split('T')[0]` which converts to UTC first — causing off-by-one errors for UTC+ timezones (Israel = UTC+3).
 
-**`src/contexts/AuthContext.tsx`** — significant update
-- New `SetupStage`: `'needs_active_circle'` (user has 2+ circles, none selected yet)
-- Loads `active_circle_id` from `user_profile` at login; holds in memory for the session
-- Null-default logic: 1 circle → auto-select silently; 2+ circles → `needs_active_circle` stage
-- Exposes `activeCircleId` and `switchCircle(circleId)` to all consumers
+Created `src/utils/dateUtils.ts` with:
+- `toLocalISODate(date)` — extracts Y/M/D in local timezone
+- `parseDateOnly(str)` — parses date-only strings as local midnight (avoids UTC parse default)
 
-**`src/hooks/useCircle.ts`**
-- Now reads `activeCircleId` from AuthContext instead of first-found DB lookup
+Fixed all call sites: AddVacationScreen, EditVacationScreen, AddTaskScreen, TaskDetailScreen, AddProjectScreen, AddAppointmentScreen, CalendarScreen, taskGrouping.ts.
 
-**`src/hooks/useUserCircles.ts`** — new file
-- Returns all user circles with member counts; used in Settings
+### Battery optimization UX
 
-**Navigation**
-- `SelectCircle` added to `AuthStackParamList` + `AuthNavigator`
-- `CreateCircle`, `JoinCircle` added to `AppStackParamList` + `AppNavigator`
-
-**`src/screens/auth/SelectCircleScreen.tsx`** — new file
-- Shown when `setupStage === 'needs_active_circle'`
-- Lists all circles; tapping one sets it as active and enters the app
-
-**`src/screens/auth/EnterEmailScreen.tsx`**
-- Routes to `SelectCircle` for `needs_active_circle` stage
-
-**`src/screens/auth/InviteManagementScreen.tsx`** — bug fix
-- Was calling `getUserCircle()` (`.maybeSingle()`) which errors with multiple circles → infinite spinner
-- Now uses `activeCircleId` from context; falls back to `getUserCircle` only during onboarding
-
-**`src/screens/settings/CreateCircleScreen.tsx`** — new file
-- Simple name input; creates circle and returns to Settings (does not auto-switch)
-
-**`src/screens/settings/JoinCircleScreen.tsx`** — new file
-- Code input for existing users to join a second circle; calls `joinCircleWithToken`
-
-**`src/screens/settings/UserSettingsScreen.tsx`**
-- CIRCLE section replaced with CIRCLES section
-- Lists all user circles: name + member count + checkmark on active
-- Tapping active circle → navigate to CircleAdmin; tapping non-active → switch then navigate
-- `+` button opens inline popup menu (react-native-popup-menu): "Create circle" / "Join with code"
-
-**`src/screens/app/ProjectsScreen.tsx`**
-- Circle name added to header (matching TaskListScreen and CalendarScreen which already had it)
-
-**`src/screens/app/ProjectDetailScreen.tsx`** — minor fix
-- Status array typed as literal union (pre-existing TS error surfaced by type regeneration)
+- Added `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission to `AndroidManifest.xml`
+- Installed `expo-intent-launcher`
+- Settings reminders toggle now fires the system battery optimization exemption dialog on enable (Android only)
+- **Requires a native rebuild** to take effect (AndroidManifest change + new native module)
 
 ---
 
 ## To Implement Next Session
 
-- **Auto-generated "What's New" file** — design finalized in `docs/technical/05-android-dev-build-setup.md` under "Planned: Auto-Generated 'What's New' File". `build-release.ps1` should tag the release commit and prepend a raw commit-log section to a new `docs/whats-new.md` on every successful build. Not yet implemented — design only.
+- **Native rebuild required** for battery optimization prompt: `npx expo run:android` with the usual env vars
+- **Vacation & collapsible calendar** (F16) — design in `docs/designs/design-vacation-calendar.md`
 
 ---
 
@@ -144,12 +71,11 @@ At the start of the implementation session, convert the checklist below to todos
 
 ### High
 
-- F1 — Push notifications (register token on login, notify on task assignment)
 - F2 — Daily digest modal (first app open of the day)
 
 ### Medium
 
-- F13 — Email invite (send invite code via Resend to recipient's email — design: enter email in app, Edge Function sends message with code + instructions)
+- F13 — Email invite (send invite code via Resend to recipient's email)
 - F9 — i18n (German/English, i18next)
 
 ### Low

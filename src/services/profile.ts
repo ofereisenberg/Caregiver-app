@@ -19,3 +19,11 @@ export async function updateDisplayName(userId: string, displayName: string): Pr
     .eq('id', userId);
   return { error: error?.message ?? null };
 }
+
+export async function updateRemindersEnabled(userId: string, enabled: boolean): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('user_profile')
+    .update({ reminders_enabled: enabled })
+    .eq('id', userId);
+  return { error: error?.message ?? null };
+}

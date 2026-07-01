@@ -98,3 +98,50 @@ The Supabase magic link sends an 8-digit OTP (not 6). The auth flow expects 8 ch
 
 ### "Install from unknown sources" is per source app on Android
 The permission is not a global toggle — Android asks which app is allowed to install APKs. Choose the app you'll use to open the APK (e.g. Google Drive, WhatsApp).
+
+---
+
+## Push Notifications / FCM
+
+### pg_net must be explicitly enabled alongside pg_cron
+
+`pg_cron` does not pull in `pg_net`. Both extensions need to be created separately. Without `pg_net`, every cron job that calls `net.http_post` fails silently with `ERROR: schema "net" does not exist` — the cron shows `succeeded` in the scheduler but the job itself errors.
+
+### Supabase secrets set via PowerShell ConvertTo-Json can produce malformed JSON
+
+Using PowerShell's `ConvertTo-Json | ConvertTo-Json -Compress` pipeline to minify Firebase service account JSON can produce broken output (special characters in private keys getting mis-escaped). Use Python instead: `json.dumps(data, separators=(',', ':'))`. Always verify the secret parses correctly by calling the Edge Function directly after setting it.
+
+### FCM v1 silently drops notifications on Android 8+ without channel_id
+
+The FCM v1 API accepts the request and returns a message ID even if no `channel_id` is specified. The notification is silently dropped on the device. Always include `android: { notification: { channel_id: 'default' } }` in the FCM message payload.
+
+### Edge Functions that call other Edge Functions must handle the response
+
+`send-reminders` calling `notify` via `fetch()` without checking the response means any crash in `notify` is completely invisible — `send-reminders` returns `{"ok":true}` regardless. Always `await` and log the response, or at minimum check `res.ok`.
+
+### expo-notifications setNotificationHandler requires shouldShowBanner and shouldShowList (SDK 56)
+
+The `NotificationBehavior` type in SDK 56 requires `shouldShowBanner` and `shouldShowList` in addition to the older `shouldShowAlert`. Omitting them causes a TypeScript error. Include all five fields:
+
+```ts
+{ shouldShowAlert: true, shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }
+```
+
+### Samsung battery optimization kills FCM background delivery
+
+Samsung Galaxy devices aggressively kill background processes, including the FCM listener. Users must exempt the app from battery optimization. Add `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission to `AndroidManifest.xml` and trigger the system dialog via `expo-intent-launcher` when the user enables reminders — do not rely on users finding it manually in Settings.
+
+### toLocalISODate instead of toISOString for date-only DB fields in UTC+ timezones
+
+`date.toISOString()` converts to UTC before formatting. For a device in UTC+3, a date picked at local midnight (e.g. `2026-07-01T00:00:00+03:00`) becomes `2026-06-30T21:00:00Z` → stored as `2026-06-30`. Use a local-timezone extractor instead:
+
+```ts
+function toLocalISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+```
+
+Similarly, `new Date('2026-07-01')` parses as UTC midnight — use `new Date('2026-07-01T00:00:00')` to get local midnight.

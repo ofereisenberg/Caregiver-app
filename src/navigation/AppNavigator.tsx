@@ -7,6 +7,7 @@ import { AddAppointmentScreen } from '../screens/app/AddAppointmentScreen';
 import { AddProjectScreen } from '../screens/app/AddProjectScreen';
 import { AddTaskScreen } from '../screens/app/AddTaskScreen';
 import { AddVacationScreen } from '../screens/app/AddVacationScreen';
+import { EditVacationScreen } from '../screens/app/EditVacationScreen';
 import { DayDetailScreen } from '../screens/app/DayDetailScreen';
 import { AppointmentDetailScreen } from '../screens/app/AppointmentDetailScreen';
 import { CalendarScreen } from '../screens/app/CalendarScreen';
@@ -118,6 +119,11 @@ export function AppNavigator() {
       <Stack.Screen
         name="AddVacation"
         component={AddVacationScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="EditVacation"
+        component={EditVacationScreen}
         options={{ presentation: 'modal' }}
       />
       <Stack.Screen

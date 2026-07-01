@@ -22,13 +22,15 @@ import { useProjectList } from '../../hooks/useProjectList';
 import { useVacations } from '../../hooks/useVacations';
 import { getTask } from '../../services/tasks';
 import { createAppointment, getAppointment, updateAppointment } from '../../services/appointments';
+import { ReminderPicker } from '../../components/ReminderPicker';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { toLocalISODate } from '../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AddAppointment'>;
 type PickerMode = 'start-date' | 'end-date' | 'start-time' | 'end-time';
-type ExpandedRow = 'location' | 'repeat' | 'assign' | 'project';
+type ExpandedRow = 'location' | 'repeat' | 'assign' | 'project' | 'reminder';
 
 const RECURRENCE_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Don't repeat", value: null },
@@ -79,6 +81,7 @@ export function AddAppointmentScreen() {
   const [location, setLocation] = useState('');
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [inviteeIds, setInviteeIds] = useState<string[]>([]);
+  const [reminderOffsetMinutes, setReminderOffsetMinutes] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
   const [projectId, setProjectId] = useState<string | null>(route.params?.projectId ?? null);
   const [expandedRow, setExpandedRow] = useState<ExpandedRow | null>(null);
@@ -110,6 +113,7 @@ export function AddAppointmentScreen() {
       setLocation(data.location ?? '');
       setRecurrence(data.recurrence ?? null);
       setInviteeIds(data.invitee_ids);
+      setReminderOffsetMinutes(data.reminder_offset_minutes ?? null);
       setVisibility(data.visibility ?? 'shared');
     });
   }, [appointmentId]);
@@ -195,6 +199,7 @@ export function AddAppointmentScreen() {
         location: location.trim() || null,
         recurrence,
         visibility,
+        reminder_offset_minutes: reminderOffsetMinutes,
       }, inviteeIds);
       setSaving(false);
       if (updateError) {
@@ -214,6 +219,7 @@ export function AddAppointmentScreen() {
         recurrence,
         visibility,
         project_id: projectId,
+        reminder_offset_minutes: reminderOffsetMinutes,
       }, inviteeIds);
       setSaving(false);
       if (createError) {
@@ -228,7 +234,7 @@ export function AddAppointmentScreen() {
 
   const vacationWarning = useMemo(() => {
     if (inviteeIds.length === 0) return null;
-    const startDateKey = startDate.toISOString().split('T')[0];
+    const startDateKey = toLocalISODate(startDate);
     const onVacation = vacations.find(
       (v) => inviteeIds.includes(v.user_id) && v.start_date <= startDateKey && v.end_date >= startDateKey,
     );
@@ -414,6 +420,14 @@ export function AddAppointmentScreen() {
             })}
           </View>
         )}
+
+        <View style={styles.rowDivider} />
+        <ReminderPicker
+          value={reminderOffsetMinutes}
+          onChange={setReminderOffsetMinutes}
+          isExpanded={expandedRow === 'reminder'}
+          onToggle={() => toggleRow('reminder')}
+        />
 
         <View style={styles.rowDivider} />
         <View style={styles.visibilityRow}>

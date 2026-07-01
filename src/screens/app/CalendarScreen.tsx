@@ -25,6 +25,7 @@ import { Task } from '../../services/tasks';
 import { Vacation } from '../../services/vacations';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { toLocalISODate } from '../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 
@@ -46,7 +47,7 @@ const APPT_COLOR = '#4a7fc1';
 const TASK_COLOR = '#5a9e6f';
 
 function todayKey(): string {
-  return new Date().toISOString().split('T')[0];
+  return toLocalISODate(new Date());
 }
 
 function toDateKey(iso: string): string {
@@ -171,7 +172,7 @@ export function CalendarScreen() {
       const end = new Date(vacation.end_date + 'T00:00:00');
       const d = new Date(start);
       while (d <= end) {
-        const key = d.toISOString().split('T')[0];
+        const key = toLocalISODate(d);
         if (!map.has(key)) map.set(key, []);
         // Only add once per vacation per day (guard against duplicates)
         if (!map.get(key)!.find((i) => i.kind === 'vacation' && i.data.id === vacation.id)) {
@@ -243,7 +244,7 @@ export function CalendarScreen() {
         setSelectedDay((prev) => {
           const d = new Date(prev + 'T00:00:00');
           d.setDate(d.getDate() + (g.dx < 0 ? 1 : -1));
-          return d.toISOString().split('T')[0];
+          return toLocalISODate(d);
         });
       },
     }),
@@ -329,7 +330,7 @@ export function CalendarScreen() {
               </View>
               {row.map((day, colIdx) => {
                 if (!day) return <View key={colIdx} style={styles.expandedDayCell} />;
-                const key = day.toISOString().split('T')[0];
+                const key = toLocalISODate(day);
                 const items = eventsByDay.get(key) ?? [];
                 const isToday = key === today;
                 const isSelected = key === selectedDay;
@@ -412,7 +413,11 @@ export function CalendarScreen() {
   function renderAgendaItem({ item }: { item: CalendarItem }) {
     if (item.kind === 'vacation') {
       return (
-        <View style={styles.vacationRow}>
+        <TouchableOpacity
+          style={styles.vacationRow}
+          onPress={() => navigation.navigate('EditVacation', { vacationId: item.data.id })}
+          activeOpacity={0.7}
+        >
           <View style={styles.vacationMarker} />
           <View style={styles.rowContent}>
             <ScaledText style={styles.rowTitle}>{item.data.title}</ScaledText>
@@ -422,7 +427,8 @@ export function CalendarScreen() {
               {new Date(item.data.end_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
             </ScaledText>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
+        </TouchableOpacity>
       );
     }
 

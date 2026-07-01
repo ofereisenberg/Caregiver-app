@@ -5,6 +5,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 import { signOut as authSignOut } from '../services/auth';
 import { getUserCircles, setActiveCircle } from '../services/circle';
+import { registerPushToken } from '../services/notifications';
 
 export type SetupStage =
   | 'loading'
@@ -62,10 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isValid) {
       setActiveCircleIdState(storedId);
       setSetupStage('complete');
+      registerPushToken(sess.user.id);
     } else if (circles.length === 1) {
       await setActiveCircle(sess.user.id, circles[0].id);
       setActiveCircleIdState(circles[0].id);
       setSetupStage('complete');
+      registerPushToken(sess.user.id);
     } else {
       setSetupStage('needs_active_circle');
     }

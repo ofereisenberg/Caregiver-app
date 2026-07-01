@@ -116,7 +116,12 @@ export function DayDetailScreen() {
           <View style={styles.section}>
             <ScaledText style={[styles.sectionLabel, { color: VACATION_COLOR }]}>On vacation</ScaledText>
             {dayVacations.map((v) => (
-              <View key={v.id} style={[styles.card, { backgroundColor: VACATION_BG }]}>
+              <TouchableOpacity
+                key={v.id}
+                style={[styles.card, { backgroundColor: VACATION_BG }]}
+                onPress={() => navigation.navigate('EditVacation', { vacationId: v.id })}
+                activeOpacity={0.75}
+              >
                 <View style={[styles.colorBar, { backgroundColor: VACATION_COLOR }]} />
                 <View style={styles.cardBody}>
                   <ScaledText style={styles.cardTitle}>{v.title}</ScaledText>
@@ -131,7 +136,8 @@ export function DayDetailScreen() {
                     </ScaledText>
                   )}
                 </View>
-              </View>
+                <Ionicons name="chevron-forward" size={14} color={VACATION_COLOR} />
+              </TouchableOpacity>
             ))}
           </View>
         )}

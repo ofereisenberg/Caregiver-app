@@ -21,13 +21,15 @@ import { useCircle } from '../../hooks/useCircle';
 import { useProjectList } from '../../hooks/useProjectList';
 import { useVacations } from '../../hooks/useVacations';
 import { createTask } from '../../services/tasks';
+import { ReminderPicker } from '../../components/ReminderPicker';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { toLocalISODate } from '../../utils/dateUtils';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AddTask'>;
 
-type ExpandedRow = 'repeat' | 'assign' | 'when' | 'project' | null;
+type ExpandedRow = 'repeat' | 'assign' | 'when' | 'project' | 'reminder' | null;
 type RepeatValue = 'every_few_days' | 'weekly' | 'monthly' | null;
 
 const REPEAT_OPTIONS: { label: string; value: RepeatValue }[] = [
@@ -73,6 +75,7 @@ export function AddTaskScreen() {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [timePickerMode, setTimePickerMode] = useState<TimePickerMode | null>(null);
+  const [reminderOffsetMinutes, setReminderOffsetMinutes] = useState<number | null>(null);
   const [onlyMe, setOnlyMe] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(route.params?.projectId ?? null);
   const [expandedRow, setExpandedRow] = useState<ExpandedRow>(null);
@@ -135,10 +138,11 @@ export function AddTaskScreen() {
       circle_id: circle.id,
       recurrence: repeat,
       assignee: assigneeId,
-      due_date: dueDate ? dueDate.toISOString().split('T')[0] : null,
+      due_date: dueDate ? toLocalISODate(dueDate) : null,
       start_time: timeToString(startTime),
       end_time: timeToString(endTime),
       visibility: onlyMe ? 'private' : 'shared',
+      reminder_offset_minutes: reminderOffsetMinutes,
       parent_appointment_id: route.params?.parentAppointmentId ?? null,
       project_id: projectId,
     });
@@ -154,7 +158,7 @@ export function AddTaskScreen() {
 
   const vacationWarning = useMemo(() => {
     if (!assigneeId || !dueDate) return null;
-    const dueDateKey = dueDate.toISOString().split('T')[0];
+    const dueDateKey = toLocalISODate(dueDate);
     const onVacation = vacations.find(
       (v) => v.user_id === assigneeId && v.start_date <= dueDateKey && v.end_date >= dueDateKey,
     );
@@ -305,6 +309,14 @@ export function AddTaskScreen() {
             onDismiss={() => setTimePickerMode(null)}
           />
         )}
+        <View style={styles.rowDivider} />
+        <ReminderPicker
+          value={reminderOffsetMinutes}
+          onChange={setReminderOffsetMinutes}
+          isExpanded={expandedRow === 'reminder'}
+          onToggle={() => toggleRow('reminder')}
+        />
+
         <View style={styles.rowDivider} />
 
         {/* Only me toggle */}
