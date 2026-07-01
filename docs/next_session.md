@@ -11,9 +11,10 @@ Reminders & push notification infrastructure (F1) is fully implemented and worki
 - `send-reminders` Edge Function queries due reminders and calls `notify`
 - `notify` Edge Function sends FCM v1 push notifications and writes to `notification_log`
 - ReminderPicker UI wired into AddTask, TaskDetail, AddAppointment screens
-- Reminders toggle in Settings with automatic battery optimization prompt (Android)
+- Reminders toggle in Settings (battery optimization prompt deferred to next native rebuild)
 - Foreground notification handler set up so notifications show even when app is open
 - Timezone bug fixed: all date-only writes now use local timezone (not UTC)
+- Task and appointment reminders both tested and confirmed working on device
 
 Vacation & collapsible calendar design is agreed (`docs/designs/design-vacation-calendar.md`) — not yet implemented.
 
@@ -21,34 +22,42 @@ Vacation & collapsible calendar design is agreed (`docs/designs/design-vacation-
 
 ## What Was Done This Session (2026-07-01)
 
-### Push notifications (F1) — implementation & debugging
+### Reminder dedup fix — scheduled_for column
 
-All phases from the previous session's implementation plan were completed. Key debugging discoveries:
+The `notification_log` was missing a `scheduled_for` timestamp, so the dedup check keyed only on `item_id`. Rescheduling an appointment blocked the new reminder because the old log row matched. Fixed by:
 
-- `pg_net` extension was not enabled — cron was failing silently on every tick
-- `FIREBASE_SERVICE_ACCOUNT` secret was stored with malformed JSON from PowerShell minification — re-set via Python
-- FCM v1 requires `android.notification.channel_id` in the message payload for Android 8+ — notifications were silently dropped without it
-- `notify` Edge Function had no try/catch — crashed on bad secrets with no error surfaced to caller
-- `send-reminders` did not check the response from `notify` — added error logging
-- Samsung battery optimization was killing FCM background delivery — added automatic `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` prompt on Settings toggle
-- No foreground notification handler — added `Notifications.setNotificationHandler` in `services/notifications.ts`
+- Adding `scheduled_for timestamptz` to `notification_log`
+- Passing `starts_at` / task `due_date+start_time` through `send-reminders` → `notify` → log
+- Dedup now checks `(item_id, scheduled_for)` — rescheduling always gets a fresh reminder
 
-### Timezone bug fix
+### Task reminder fixes
 
-All date-only values (`due_date`, `start_date`, `end_date`) were being written to the DB using `toISOString().split('T')[0]` which converts to UTC first — causing off-by-one errors for UTC+ timezones (Israel = UTC+3).
+Task reminders were broken in two ways:
 
-Created `src/utils/dateUtils.ts` with:
-- `toLocalISODate(date)` — extracts Y/M/D in local timezone
-- `parseDateOnly(str)` — parses date-only strings as local midnight (avoids UTC parse default)
+1. `start_time` was stored as local time (CEST) — the server-side RPC treated it as UTC, firing 2 hours late
+2. The RPC used `due_date > now()` on a date-only field (midnight UTC), which is already false by morning
+3. `reminder_offset_minutes` was not being saved for date-only tasks (no start_time)
 
-Fixed all call sites: AddVacationScreen, EditVacationScreen, AddTaskScreen, TaskDetailScreen, AddProjectScreen, AddAppointmentScreen, CalendarScreen, taskGrouping.ts.
+Fixed by:
 
-### Battery optimization UX
+- `timeToString` now uses `getUTCHours/getUTCMinutes` — start_time stored as UTC
+- `parseTimeString` uses `setUTCHours` so round-trip is correct; `toLocaleTimeString` still shows local time
+- RPC now combines `due_date::date + start_time` as UTC timestamp for the trigger window
+- Dedup keyed on the combined timestamp
+- ReminderPicker shows "Set a time first" and is disabled when no start_time is set
+- Existing 3 tasks migrated: subtracted 2h to convert CEST → UTC
 
-- Added `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission to `AndroidManifest.xml`
-- Installed `expo-intent-launcher`
-- Settings reminders toggle now fires the system battery optimization exemption dialog on enable (Android only)
-- **Requires a native rebuild** to take effect (AndroidManifest change + new native module)
+### Battery optimization prompt temporarily removed
+
+`expo-intent-launcher` is a new native module — installing it without a rebuild caused a crash. Removed the prompt from Settings until the next `npx expo run:android` rebuild.
+
+### Multi-user token registration
+
+Confirmed architecture is correct:
+
+- Each user's FCM token is registered on every app launch via `registerPushToken()` in `AuthContext`
+- `notify` Edge Function looks up tokens for all `user_ids` passed to it
+- `reminders_enabled` is checked per-user server-side in `notify`
 
 ---
 
