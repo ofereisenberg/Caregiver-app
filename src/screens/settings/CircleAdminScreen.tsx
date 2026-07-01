@@ -14,6 +14,7 @@ import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 
 function roleLabel(role: string) {
   return role === 'admin' ? 'Admin' : 'Member';
@@ -33,6 +34,7 @@ export function CircleAdminScreen() {
   const navigation = useNavigation();
   const { session } = useAuth();
   const { circle, members, loading } = useCircle();
+  const { contacts } = useExternalContacts(circle?.id ?? null);
 
   if (loading) {
     return (
@@ -74,6 +76,41 @@ export function CircleAdminScreen() {
             </React.Fragment>
           );
         })}
+      </View>
+
+      <ScaledText style={styles.sectionLabel}>EXTERNAL CONTACTS</ScaledText>
+      <View style={styles.card}>
+        {contacts.map((contact, index) => (
+          <React.Fragment key={contact.id}>
+            <TouchableOpacity
+              style={styles.memberRow}
+              onPress={() => navigation.navigate('AddEditExternalContact' as never, { contactId: contact.id } as never)}
+            >
+              <View style={[styles.avatar, styles.avatarExternal]}>
+                <Text style={[styles.avatarText, styles.avatarTextExternal]}>
+                  {initials(contact.display_name)}
+                </Text>
+              </View>
+              <View style={styles.memberInfo}>
+                <ScaledText style={styles.memberName}>{contact.display_name}</ScaledText>
+                {contact.email ? (
+                  <ScaledText style={styles.memberRole}>{contact.email}</ScaledText>
+                ) : (
+                  <ScaledText style={styles.memberRole}>External</ScaledText>
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.textHairline} />
+            </TouchableOpacity>
+            {index < contacts.length - 1 && <View style={styles.rowDivider} />}
+          </React.Fragment>
+        ))}
+        {contacts.length > 0 && <View style={styles.rowDivider} />}
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => navigation.navigate('AddEditExternalContact' as never)}
+        >
+          <ScaledText style={[styles.rowLabel, styles.addLabel]}>+ Add external contact</ScaledText>
+        </TouchableOpacity>
       </View>
 
       <ScaledText style={styles.sectionLabel}>INVITES</ScaledText>
@@ -145,6 +182,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarSelf: { backgroundColor: theme.colors.sage },
+  avatarExternal: { backgroundColor: theme.colors.externalBg },
   avatarText: {
     fontSize: theme.fontSize.small,
     fontFamily: theme.fontFamily.sansBold,
@@ -152,6 +190,7 @@ const styles = StyleSheet.create({
     color: theme.colors.sageDark,
   },
   avatarTextSelf: { color: theme.colors.surface },
+  avatarTextExternal: { color: theme.colors.externalFg },
   memberInfo: { flex: 1 },
   memberName: {
     fontSize: theme.fontSize.body,
@@ -180,5 +219,8 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.body,
     fontFamily: theme.fontFamily.sans,
     color: theme.colors.textSecondary,
+  },
+  addLabel: {
+    color: theme.colors.sage,
   },
 });

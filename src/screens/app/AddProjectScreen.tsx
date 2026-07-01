@@ -17,10 +17,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { createProject } from '../../services/projects';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 import { toLocalISODate } from '../../utils/dateUtils';
+import { PersonSelection, personSelectionToProjectFields, resolvePersonName } from '../../types/PersonSelection';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 
@@ -34,11 +36,12 @@ export function AddProjectScreen() {
   const navigation = useNavigation<Nav>();
   const { session } = useAuth();
   const { circle, members } = useCircle();
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
 
   const titleRef = useRef<TextInput>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [ownerId, setOwnerId] = useState<string | null>(session?.user.id ?? null);
+  const [owner, setOwner] = useState<PersonSelection>(session?.user.id ? { type: 'user', id: session.user.id } : null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [onlyMe, setOnlyMe] = useState(false);
   const [expandedRow, setExpandedRow] = useState<ExpandedRow>(null);
@@ -73,7 +76,7 @@ export function AddProjectScreen() {
     const { data, error: createError } = await createProject({
       title: title.trim(),
       description: description.trim() || null,
-      owner: ownerId,
+      ...personSelectionToProjectFields(owner),
       due_date: dueDate ? toLocalISODate(dueDate) : null,
       visibility: onlyMe ? 'private' : 'shared',
       circle_id: circle.id,
@@ -87,10 +90,10 @@ export function AddProjectScreen() {
     } else if (data) {
       navigation.replace('ProjectDetail', { projectId: data.id });
     }
-  }, [title, description, ownerId, dueDate, onlyMe, circle, session, navigation]);
+  }, [title, description, owner, dueDate, onlyMe, circle, session, navigation]);
 
   const canAdd = title.trim().length > 0 && !saving;
-  const ownerName = ownerId ? members.find((m) => m.user_id === ownerId)?.displayName ?? 'Me' : 'Unassigned';
+  const ownerName = resolvePersonName(owner, members, externalContacts);
 
   return (
     <KeyboardAvoidingView
@@ -141,18 +144,18 @@ export function AddProjectScreen() {
         {expandedRow === 'owner' && (
           <View style={styles.chipRow}>
             <TouchableOpacity
-              style={[styles.chip, ownerId === null && styles.chipSelected]}
-              onPress={() => { setOwnerId(null); setExpandedRow(null); }}
+              style={[styles.chip, owner === null && styles.chipSelected]}
+              onPress={() => { setOwner(null); setExpandedRow(null); }}
             >
-              <ScaledText style={[styles.chipLabel, ownerId === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
+              <ScaledText style={[styles.chipLabel, owner === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
             </TouchableOpacity>
             {members.map((member) => {
-              const selected = ownerId === member.user_id;
+              const selected = owner?.type === 'user' && owner.id === member.user_id;
               return (
                 <TouchableOpacity
                   key={member.user_id}
                   style={[styles.chip, selected && styles.chipSelected]}
-                  onPress={() => { setOwnerId(member.user_id); setExpandedRow(null); }}
+                  onPress={() => { setOwner({ type: 'user', id: member.user_id }); setExpandedRow(null); }}
                 >
                   <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                     {member.displayName.split(' ')[0]}
@@ -160,6 +163,25 @@ export function AddProjectScreen() {
                 </TouchableOpacity>
               );
             })}
+            {externalContacts.length > 0 && (
+              <>
+                <View style={styles.chipDivider} />
+                {externalContacts.map((c) => {
+                  const selected = owner?.type === 'external' && owner.id === c.id;
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={[styles.chip, selected && styles.chipExternalSelected]}
+                      onPress={() => { setOwner({ type: 'external', id: c.id }); setExpandedRow(null); }}
+                    >
+                      <ScaledText style={[styles.chipLabel, selected && styles.chipLabelExternalSelected]}>
+                        {c.display_name.split(' ')[0]}
+                      </ScaledText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            )}
           </View>
         )}
         <View style={styles.rowDivider} />
@@ -315,6 +337,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   chipLabelSelected: { color: theme.colors.sageDark },
+  chipExternalSelected: { backgroundColor: theme.colors.externalBg, borderColor: theme.colors.externalFg },
+  chipLabelExternalSelected: { color: theme.colors.externalFg },
+  chipDivider: { width: '100%' as const, height: 1, backgroundColor: theme.colors.divider, marginVertical: theme.spacing.xs },
   rowDivider: {
     height: 1,
     backgroundColor: theme.colors.divider,

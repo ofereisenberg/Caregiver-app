@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { useOverview } from '../../hooks/useOverview';
 import { useProjectList } from '../../hooks/useProjectList';
 import { DropdownMenuItem } from '../../components/DropdownMenu';
@@ -34,6 +35,7 @@ export function TaskListScreen() {
   const currentUserId = session?.user.id ?? '';
 
   const { circle, members, loading: circleLoading } = useCircle();
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
   const [filter, setFilter] = useState<Filter>('all');
   const [fabOpen, setFabOpen] = useState(false);
   const [filterProjectIds, setFilterProjectIds] = useState<string[]>([]);
@@ -97,6 +99,12 @@ export function TaskListScreen() {
     members.forEach((m, i) => map.set(m.user_id, { displayName: m.displayName, index: i }));
     return map;
   }, [members]);
+
+  const externalContactMap = useMemo(() => {
+    const map = new Map<string, string>();
+    externalContacts.forEach((c) => map.set(c.id, c.display_name));
+    return map;
+  }, [externalContacts]);
 
   const currentMember = memberMap.get(currentUserId);
   const headerInitial = currentMember?.displayName.charAt(0).toUpperCase() ?? '?';
@@ -194,6 +202,7 @@ export function TaskListScreen() {
       <OverviewItemRow
         item={item}
         memberMap={memberMap}
+        externalContactMap={externalContactMap}
         projectMap={projectMap}
         onPress={() => {
           if (item.kind === 'task') {

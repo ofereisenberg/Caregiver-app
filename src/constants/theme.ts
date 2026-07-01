@@ -22,6 +22,10 @@ export const theme = {
     overdueFg:       '#9a6f33', // overdue badge text, today section header
     overdueBg:       '#f1e4d2', // overdue badge background, amber avatar bg
 
+    // External contacts — warm clay; distinguishes externals from circle members (sage)
+    externalFg:      '#7a4f3a', // chip text, avatar text, name display
+    externalBg:      '#ede4de', // chip selected background, avatar background
+
     // Waiting / slate — secondary status
     waitingFg:       '#69757f', // waiting badge text
     waitingBg:       '#e2e6ea', // waiting badge background

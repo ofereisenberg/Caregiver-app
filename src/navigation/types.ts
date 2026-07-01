@@ -32,4 +32,5 @@ export type AppStackParamList = {
   JoinCircle: undefined;
   InviteManagement: undefined;
   UserSettings: undefined;
+  AddEditExternalContact: { contactId?: string };
 };

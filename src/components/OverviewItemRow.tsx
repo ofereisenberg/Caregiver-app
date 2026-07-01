@@ -21,6 +21,7 @@ const AVATAR_COLORS = [
 interface Props {
   item: OverviewItem;
   memberMap: Map<string, { displayName: string; index: number }>;
+  externalContactMap?: Map<string, string>;
   projectMap?: Map<string, string>;
   onPress: () => void;
   onComplete?: () => void;
@@ -75,7 +76,7 @@ function ItemMenu({ items }: { items: DropdownMenuItem[] }) {
   );
 }
 
-export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComplete, onUncheck, onProjectTagPress, menuItems }: Props) {
+export function OverviewItemRow({ item, memberMap, externalContactMap, projectMap, onPress, onComplete, onUncheck, onProjectTagPress, menuItems }: Props) {
   if (item.kind === 'appointment') {
     const appt = item.data;
     const projectName = appt.project_id && projectMap ? projectMap.get(appt.project_id) : null;
@@ -107,6 +108,7 @@ export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComple
   const overdue = isTaskOverdue(task.due_date);
   const taskMeta = formatTaskMeta(task);
   const member = task.assignee ? memberMap.get(task.assignee) : null;
+  const externalName = task.external_assignee_id ? (externalContactMap?.get(task.external_assignee_id) ?? null) : null;
   const idx = member?.index ?? 0;
   const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
   const avatarFg = idx === 0 ? theme.colors.sageDark
@@ -158,6 +160,12 @@ export function OverviewItemRow({ item, memberMap, projectMap, onPress, onComple
         <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
           <Text style={[styles.avatarText, { color: avatarFg }]}>
             {member?.displayName.charAt(0).toUpperCase() ?? '?'}
+          </Text>
+        </View>
+      ) : externalName ? (
+        <View style={[styles.avatar, { backgroundColor: theme.colors.externalBg }]}>
+          <Text style={[styles.avatarText, { color: theme.colors.externalFg }]}>
+            {externalName.charAt(0).toUpperCase()}
           </Text>
         </View>
       ) : (

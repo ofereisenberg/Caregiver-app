@@ -18,9 +18,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { useProjectList } from '../../hooks/useProjectList';
 import { useVacations } from '../../hooks/useVacations';
 import { createTask } from '../../services/tasks';
+import { PersonSelection, personSelectionToTaskFields, resolvePersonName } from '../../types/PersonSelection';
 import { ReminderPicker } from '../../components/ReminderPicker';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
@@ -64,13 +66,14 @@ export function AddTaskScreen() {
   const route = useRoute<Route>();
   const { session } = useAuth();
   const { circle, members } = useCircle();
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
   const { projects } = useProjectList(circle?.id ?? null);
   const { vacations } = useVacations(circle?.id ?? null);
 
   const titleRef = useRef<TextInput>(null);
   const [title, setTitle] = useState('');
   const [repeat, setRepeat] = useState<RepeatValue>(null);
-  const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [assignee, setAssignee] = useState<PersonSelection>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
@@ -137,7 +140,7 @@ export function AddTaskScreen() {
       title: title.trim(),
       circle_id: circle.id,
       recurrence: repeat,
-      assignee: assigneeId,
+      ...personSelectionToTaskFields(assignee),
       due_date: dueDate ? toLocalISODate(dueDate) : null,
       start_time: timeToString(startTime),
       end_time: timeToString(endTime),
@@ -154,18 +157,18 @@ export function AddTaskScreen() {
     } else {
       navigation.goBack();
     }
-  }, [title, circle, session, repeat, assigneeId, dueDate, onlyMe, reminderOffsetMinutes, route.params, navigation]);
+  }, [title, circle, session, repeat, assignee, dueDate, onlyMe, reminderOffsetMinutes, route.params, navigation]);
 
   const vacationWarning = useMemo(() => {
-    if (!assigneeId || !dueDate) return null;
+    if (!assignee || assignee.type !== 'user' || !dueDate) return null;
     const dueDateKey = toLocalISODate(dueDate);
     const onVacation = vacations.find(
-      (v) => v.user_id === assigneeId && v.start_date <= dueDateKey && v.end_date >= dueDateKey,
+      (v) => v.user_id === assignee.id && v.start_date <= dueDateKey && v.end_date >= dueDateKey,
     );
     if (!onVacation) return null;
-    const name = members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Assignee';
+    const name = members.find((m) => m.user_id === assignee.id)?.displayName ?? 'Assignee';
     return `⚠️ ${name} is on vacation on this date`;
-  }, [assigneeId, dueDate, vacations, members]);
+  }, [assignee, dueDate, vacations, members]);
 
   const canAdd = title.trim().length > 0 && !saving;
 
@@ -236,21 +239,19 @@ export function AddTaskScreen() {
             <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Assign
           </ScaledText>
           <ScaledText style={styles.expandRowValue}>
-            {assigneeId
-              ? members.find((m) => m.user_id === assigneeId)?.displayName ?? 'Unassigned'
-              : 'Unassigned'}
+            {resolvePersonName(assignee, members, externalContacts)}
           </ScaledText>
         </TouchableOpacity>
         {expandedRow === 'assign' && (
           <View style={styles.chipRow}>
             {members.map((member) => {
-              const selected = assigneeId === member.user_id;
+              const selected = assignee?.type === 'user' && assignee.id === member.user_id;
               return (
                 <TouchableOpacity
                   key={member.user_id}
                   style={[styles.chip, selected && styles.chipSelected]}
                   onPress={() => {
-                    setAssigneeId(selected ? null : member.user_id);
+                    setAssignee(selected ? null : { type: 'user', id: member.user_id });
                     setExpandedRow(null);
                   }}
                 >
@@ -260,6 +261,28 @@ export function AddTaskScreen() {
                 </TouchableOpacity>
               );
             })}
+            {externalContacts.length > 0 && (
+              <>
+                <View style={styles.chipDivider} />
+                {externalContacts.map((contact) => {
+                  const selected = assignee?.type === 'external' && assignee.id === contact.id;
+                  return (
+                    <TouchableOpacity
+                      key={contact.id}
+                      style={[styles.chip, selected && styles.chipExternalSelected]}
+                      onPress={() => {
+                        setAssignee(selected ? null : { type: 'external', id: contact.id });
+                        setExpandedRow(null);
+                      }}
+                    >
+                      <ScaledText style={[styles.chipLabel, selected && styles.chipLabelExternalSelected]}>
+                        {contact.display_name.split(' ')[0]}
+                      </ScaledText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            )}
           </View>
         )}
         <View style={styles.rowDivider} />
@@ -475,6 +498,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.sageTint,
     borderColor: theme.colors.sageLight,
   },
+  chipExternalSelected: {
+    backgroundColor: theme.colors.externalBg,
+    borderColor: theme.colors.externalFg,
+  },
   chipLabel: {
     fontSize: theme.fontSize.label,
     fontFamily: theme.fontFamily.sansMedium,
@@ -483,6 +510,15 @@ const styles = StyleSheet.create({
   },
   chipLabelSelected: {
     color: theme.colors.sageDark,
+  },
+  chipLabelExternalSelected: {
+    color: theme.colors.externalFg,
+  },
+  chipDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: theme.colors.divider,
+    marginVertical: theme.spacing.xs,
   },
   rowDivider: {
     height: 1,

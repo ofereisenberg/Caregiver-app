@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { useProjectList } from '../../hooks/useProjectList';
 import { useAppointment } from '../../hooks/useAppointment';
 import { deleteAppointment, updateAppointment } from '../../services/appointments';
@@ -65,6 +66,7 @@ export function AppointmentDetailScreen() {
 
   const { appointment, prepTasks, loading, refresh } = useAppointment(appointmentId);
   const { members, circle } = useCircle();
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
   const { projects } = useProjectList(circle?.id ?? null);
 
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
@@ -73,13 +75,19 @@ export function AppointmentDetailScreen() {
 
   async function handleChangeProject(value: string | null) {
     setProjectPickerOpen(false);
-    await updateAppointment(appointmentId, { project_id: value }, appointment?.invitee_ids ?? []);
+    await updateAppointment(appointmentId, { project_id: value }, appointment?.invitee_ids ?? [], appointment?.external_invitee_ids ?? []);
     refresh();
   }
 
-  const inviteeNames = (appointment?.invitee_ids ?? [])
-    .map((id) => members.find((m) => m.user_id === id)?.displayName ?? null)
-    .filter((n): n is string => n !== null);
+  const userInvitees = (appointment?.invitee_ids ?? [])
+    .map((id) => ({ id, name: members.find((m) => m.user_id === id)?.displayName ?? null, isExternal: false as const }))
+    .filter((n): n is { id: string; name: string; isExternal: false } => n.name !== null);
+
+  const externalInvitees = (appointment?.external_invitee_ids ?? [])
+    .map((id) => ({ id, name: externalContacts.find((c) => c.id === id)?.display_name ?? null, isExternal: true as const }))
+    .filter((n): n is { id: string; name: string; isExternal: true } => n.name !== null);
+
+  const allInvitees = [...userInvitees, ...externalInvitees];
 
   const completedCount = prepTasks.filter((t) => t.completed).length;
 
@@ -141,13 +149,15 @@ export function AppointmentDetailScreen() {
           <View style={styles.fieldRow}>
             <ScaledText style={styles.fieldLabel}>With</ScaledText>
             <View style={styles.fieldValueRow}>
-              {inviteeNames.map((name) => (
-                <View key={name} style={styles.assigneeAvatar}>
-                  <Text style={styles.assigneeAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+              {allInvitees.map(({ id, name, isExternal }) => (
+                <View key={id} style={[styles.assigneeAvatar, isExternal && styles.assigneeAvatarExternal]}>
+                  <Text style={[styles.assigneeAvatarText, isExternal && styles.assigneeAvatarTextExternal]}>
+                    {name.charAt(0).toUpperCase()}
+                  </Text>
                 </View>
               ))}
               <ScaledText style={styles.fieldValue}>
-                {inviteeNames.length > 0 ? inviteeNames.join(', ') : 'Nobody'}
+                {allInvitees.length > 0 ? allInvitees.map((i) => i.name).join(', ') : 'Nobody'}
               </ScaledText>
             </View>
           </View>
@@ -294,6 +304,8 @@ const styles = StyleSheet.create({
   fieldValueMuted: { fontFamily: theme.fontFamily.sans, fontWeight: theme.fontWeight.regular, color: theme.colors.textMuted },
   assigneeAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.sageTint, alignItems: 'center', justifyContent: 'center' },
   assigneeAvatarText: { fontSize: theme.fontSize.micro, fontFamily: theme.fontFamily.sansBold, fontWeight: theme.fontWeight.bold, color: theme.colors.sageDark },
+  assigneeAvatarExternal: { backgroundColor: theme.colors.externalBg },
+  assigneeAvatarTextExternal: { color: theme.colors.externalFg },
   rowDivider: { height: 1, backgroundColor: theme.colors.divider, marginHorizontal: theme.spacing.lg },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: theme.spacing.md },
   sectionHeader: { fontSize: theme.fontSize.label, fontFamily: theme.fontFamily.sansSemiBold, fontWeight: theme.fontWeight.semibold, color: theme.colors.textMuted, letterSpacing: theme.letterSpacing.wide, textTransform: 'uppercase' },

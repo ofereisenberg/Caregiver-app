@@ -14,10 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { useProjectList } from '../../hooks/useProjectList';
 import { Project } from '../../services/projects';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { personSelectionFromProject, resolvePersonName } from '../../types/PersonSelection';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type ActiveTab = 'active' | 'done';
@@ -42,10 +44,12 @@ function formatDueDate(dateStr: string | null): string | null {
 
 interface ProjectRowProps {
   project: Project;
+  ownerName: string | null;
+  isExternalOwner: boolean;
   onPress: () => void;
 }
 
-function ProjectRow({ project, onPress }: ProjectRowProps) {
+function ProjectRow({ project, ownerName, isExternalOwner, onPress }: ProjectRowProps) {
   const colors = STATUS_COLORS[project.status] ?? STATUS_COLORS.not_started;
   const dueStr = formatDueDate(project.due_date);
   const isDone = project.status === 'done';
@@ -66,6 +70,11 @@ function ProjectRow({ project, onPress }: ProjectRowProps) {
               {STATUS_LABEL[project.status] ?? project.status}
             </ScaledText>
           </View>
+          {ownerName && (
+            <ScaledText style={[styles.ownerText, isExternalOwner && styles.ownerTextExternal]}>
+              {ownerName.split(' ')[0]}
+            </ScaledText>
+          )}
           {dueStr && (
             <ScaledText style={styles.dueText}>Due {dueStr}</ScaledText>
           )}
@@ -82,6 +91,7 @@ export function ProjectsScreen() {
   const { circle, members, loading: circleLoading } = useCircle();
 
   const { projects, loading: dataLoading, refresh } = useProjectList(circle?.id ?? null);
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('active');
 
   useFocusEffect(
@@ -161,12 +171,18 @@ export function ProjectsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          renderItem={({ item }) => (
-            <ProjectRow
-              project={item}
-              onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })}
-            />
-          )}
+          renderItem={({ item }) => {
+            const sel = personSelectionFromProject(item.owner, item.external_owner_id ?? null);
+            const ownerName = sel ? resolvePersonName(sel, members, externalContacts) : null;
+            return (
+              <ProjectRow
+                project={item}
+                ownerName={ownerName}
+                isExternalOwner={sel?.type === 'external'}
+                onPress={() => navigation.navigate('ProjectDetail', { projectId: item.id })}
+              />
+            );
+          }}
         />
       )}
 
@@ -288,6 +304,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
     letterSpacing: theme.letterSpacing.wide,
     textTransform: 'uppercase',
+  },
+  ownerText: {
+    fontSize: theme.fontSize.small,
+    fontFamily: theme.fontFamily.sans,
+    color: theme.colors.textMuted,
+  },
+  ownerTextExternal: {
+    color: theme.colors.externalFg,
   },
   dueText: {
     fontSize: theme.fontSize.small,

@@ -18,8 +18,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { useProjectList } from '../../hooks/useProjectList';
 import { useTask } from '../../hooks/useTask';
+import { PersonSelection, personSelectionFromTask, personSelectionToTaskFields, resolvePersonName } from '../../types/PersonSelection';
 import { completeTask, deleteTask, updateTask } from '../../services/tasks';
 import { formatDueLabel, isTaskOverdue } from '../../utils/taskGrouping';
 import { ReminderPicker } from '../../components/ReminderPicker';
@@ -74,10 +76,11 @@ export function TaskDetailScreen() {
 
   const { task, loading, refresh } = useTask(taskId);
   const { members, circle } = useCircle();
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
   const { projects } = useProjectList(circle?.id ?? null);
 
   // Local editable state — initialised from task on first load
-  const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [assignee, setAssignee] = useState<PersonSelection>(null);
   const [repeat, setRepeat] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
@@ -99,7 +102,7 @@ export function TaskDetailScreen() {
   useEffect(() => {
     if (task && !initialised.current) {
       initialised.current = true;
-      setAssigneeId(task.assignee);
+      setAssignee(personSelectionFromTask(task.assignee, task.external_assignee_id ?? null));
       setRepeat(task.recurrence);
       setDueDate(task.due_date ? new Date(task.due_date) : null);
       setStartTime(parseTimeString(task.start_time));
@@ -138,10 +141,10 @@ export function TaskDetailScreen() {
     setExpandedRow((prev) => (prev === row ? null : row));
   }
 
-  async function changeAssignee(id: string | null) {
-    setAssigneeId(id);
+  async function changeAssignee(sel: PersonSelection) {
+    setAssignee(sel);
     setExpandedRow(null);
-    await updateTask(taskId, { assignee: id });
+    await updateTask(taskId, personSelectionToTaskFields(sel));
   }
 
   async function changeRepeat(value: string | null) {
@@ -266,9 +269,7 @@ export function TaskDetailScreen() {
 
   const overdue = isTaskOverdue(task.due_date);
   const dueLabel = formatDueLabel(task.due_date);
-  const assigneeName = assigneeId
-    ? members.find((m) => m.user_id === assigneeId)?.displayName ?? null
-    : null;
+  const assigneeName = resolvePersonName(assignee, members, externalContacts);
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior="padding">
@@ -336,29 +337,51 @@ export function TaskDetailScreen() {
           <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('assignee')}>
             <ScaledText style={styles.fieldLabel}>Assignee</ScaledText>
             <View style={styles.fieldValueRow}>
-              <ScaledText style={styles.fieldValue}>{assigneeName ?? 'Unassigned'}</ScaledText>
+              <ScaledText style={styles.fieldValue}>{assigneeName}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </View>
           </TouchableOpacity>
           {expandedRow === 'assignee' && (
             <View style={styles.chipRow}>
               <TouchableOpacity
-                style={[styles.chip, assigneeId === null && styles.chipSelected]}
+                style={[styles.chip, assignee === null && styles.chipSelected]}
                 onPress={() => changeAssignee(null)}
               >
-                <ScaledText style={[styles.chipLabel, assigneeId === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
+                <ScaledText style={[styles.chipLabel, assignee === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
               </TouchableOpacity>
-              {members.map((m) => (
-                <TouchableOpacity
-                  key={m.user_id}
-                  style={[styles.chip, assigneeId === m.user_id && styles.chipSelected]}
-                  onPress={() => changeAssignee(m.user_id)}
-                >
-                  <ScaledText style={[styles.chipLabel, assigneeId === m.user_id && styles.chipLabelSelected]}>
-                    {m.displayName.split(' ')[0]}
-                  </ScaledText>
-                </TouchableOpacity>
-              ))}
+              {members.map((m) => {
+                const selected = assignee?.type === 'user' && assignee.id === m.user_id;
+                return (
+                  <TouchableOpacity
+                    key={m.user_id}
+                    style={[styles.chip, selected && styles.chipSelected]}
+                    onPress={() => changeAssignee({ type: 'user', id: m.user_id })}
+                  >
+                    <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+                      {m.displayName.split(' ')[0]}
+                    </ScaledText>
+                  </TouchableOpacity>
+                );
+              })}
+              {externalContacts.length > 0 && (
+                <>
+                  <View style={styles.chipDivider} />
+                  {externalContacts.map((c) => {
+                    const selected = assignee?.type === 'external' && assignee.id === c.id;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[styles.chip, selected && styles.chipExternalSelected]}
+                        onPress={() => changeAssignee({ type: 'external', id: c.id })}
+                      >
+                        <ScaledText style={[styles.chipLabel, selected && styles.chipLabelExternalSelected]}>
+                          {c.display_name.split(' ')[0]}
+                        </ScaledText>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              )}
             </View>
           )}
           <View style={styles.rowDivider} />
@@ -623,8 +646,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm,
   },
   chipSelected: { backgroundColor: theme.colors.sageTint, borderColor: theme.colors.sageLight },
+  chipExternalSelected: { backgroundColor: theme.colors.externalBg, borderColor: theme.colors.externalFg },
   chipLabel: { fontSize: theme.fontSize.label, fontFamily: theme.fontFamily.sansMedium, fontWeight: theme.fontWeight.medium, color: theme.colors.textSecondary },
   chipLabelSelected: { color: theme.colors.sageDark },
+  chipLabelExternalSelected: { color: theme.colors.externalFg },
+  chipDivider: { width: '100%' as const, height: 1, backgroundColor: theme.colors.divider, marginVertical: theme.spacing.xs },
   sectionHeader: {
     fontSize: theme.fontSize.label,
     fontFamily: theme.fontFamily.sansSemiBold,

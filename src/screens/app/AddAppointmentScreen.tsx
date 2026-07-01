@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
+import { useExternalContacts } from '../../hooks/useExternalContacts';
 import { useProjectList } from '../../hooks/useProjectList';
 import { useVacations } from '../../hooks/useVacations';
 import { getTask } from '../../services/tasks';
@@ -81,6 +82,7 @@ export function AddAppointmentScreen() {
   const [location, setLocation] = useState('');
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [inviteeIds, setInviteeIds] = useState<string[]>(() => session?.user.id ? [session.user.id] : []);
+  const [externalInviteeIds, setExternalInviteeIds] = useState<string[]>([]);
   const [reminderOffsetMinutes, setReminderOffsetMinutes] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<'shared' | 'private'>('shared');
   const [projectId, setProjectId] = useState<string | null>(route.params?.projectId ?? null);
@@ -113,6 +115,7 @@ export function AddAppointmentScreen() {
       setLocation(data.location ?? '');
       setRecurrence(data.recurrence ?? null);
       setInviteeIds(data.invitee_ids);
+      setExternalInviteeIds(data.external_invitee_ids);
       setReminderOffsetMinutes(data.reminder_offset_minutes ?? null);
       setVisibility(data.visibility ?? 'shared');
     });
@@ -200,7 +203,7 @@ export function AddAppointmentScreen() {
         recurrence,
         visibility,
         reminder_offset_minutes: reminderOffsetMinutes,
-      }, inviteeIds);
+      }, inviteeIds, externalInviteeIds);
       setSaving(false);
       if (updateError) {
         setError(updateError);
@@ -220,7 +223,7 @@ export function AddAppointmentScreen() {
         visibility,
         project_id: projectId,
         reminder_offset_minutes: reminderOffsetMinutes,
-      }, inviteeIds);
+      }, inviteeIds, externalInviteeIds);
       setSaving(false);
       if (createError) {
         setError(createError);
@@ -228,9 +231,10 @@ export function AddAppointmentScreen() {
         navigation.replace('AppointmentDetail', { appointmentId: appt.id });
       }
     }
-  }, [title, details, isFullDay, startDate, endDate, location, recurrence, inviteeIds, visibility, reminderOffsetMinutes, circle, session, navigation, isEditMode, appointmentId]);
+  }, [title, details, isFullDay, startDate, endDate, location, recurrence, inviteeIds, externalInviteeIds, visibility, reminderOffsetMinutes, circle, session, navigation, isEditMode, appointmentId]);
 
   const { vacations } = useVacations(circle?.id ?? null);
+  const { contacts: externalContacts } = useExternalContacts(circle?.id ?? null);
 
   const vacationWarning = useMemo(() => {
     if (inviteeIds.length === 0) return null;
@@ -246,11 +250,12 @@ export function AddAppointmentScreen() {
   const canAdd = title.trim().length > 0 && (isFullDay || endDate > startDate) && !saving;
 
   const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? "Don't repeat";
-  const inviteeLabel = inviteeIds.length === 0
-    ? 'Nobody'
-    : inviteeIds
-        .map((id) => members.find((m) => m.user_id === id)?.displayName.split(' ')[0] ?? id)
-        .join(', ');
+  const inviteeLabel = useMemo(() => {
+    const userNames = inviteeIds.map((id) => members.find((m) => m.user_id === id)?.displayName.split(' ')[0] ?? id);
+    const extNames = externalInviteeIds.map((id) => externalContacts.find((c) => c.id === id)?.display_name.split(' ')[0] ?? id);
+    const all = [...userNames, ...extNames];
+    return all.length === 0 ? 'Nobody' : all.join(', ');
+  }, [inviteeIds, externalInviteeIds, members, externalContacts]);
 
   const pickerValue = pickerMode === 'start-date' || pickerMode === 'start-time' ? startDate : endDate;
 
@@ -418,6 +423,29 @@ export function AddAppointmentScreen() {
                 </TouchableOpacity>
               );
             })}
+            {externalContacts.length > 0 && (
+              <>
+                <View style={styles.chipDivider} />
+                {externalContacts.map((c) => {
+                  const selected = externalInviteeIds.includes(c.id);
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={[styles.chip, selected && styles.chipExternalSelected]}
+                      onPress={() => setExternalInviteeIds(
+                        selected
+                          ? externalInviteeIds.filter((id) => id !== c.id)
+                          : [...externalInviteeIds, c.id]
+                      )}
+                    >
+                      <ScaledText style={[styles.chipLabel, selected && styles.chipLabelExternalSelected]}>
+                        {c.display_name.split(' ')[0]}
+                      </ScaledText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            )}
           </View>
         )}
 
@@ -714,6 +742,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   chipLabelSelected: { color: theme.colors.sageDark },
+  chipExternalSelected: { backgroundColor: theme.colors.externalBg, borderColor: theme.colors.externalFg },
+  chipLabelExternalSelected: { color: theme.colors.externalFg },
+  chipDivider: { width: '100%' as const, height: 1, backgroundColor: theme.colors.divider, marginVertical: theme.spacing.xs },
   visibilityRow: {
     flexDirection: 'row',
     alignItems: 'center',
