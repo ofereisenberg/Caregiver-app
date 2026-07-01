@@ -1,6 +1,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type AuthStackParamList = {
+  LanguagePicker: undefined;
   EnterEmail: undefined;
   CheckEmail: { email: string };
   SetupProfile: undefined;
