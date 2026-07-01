@@ -94,3 +94,72 @@ Enable USB debugging, connect via USB, and run:
 adb -s <device_serial> logcat -b crash -d
 ```
 The crash buffer contains the full stack trace including JavaScript errors.
+
+---
+
+## Push Notification Services
+
+### The minimal viable notification stack on Supabase
+
+The simplest architecture that works end-to-end without a third-party service:
+
+```text
+pg_cron (every 5 min)
+  → pg_net HTTP POST → send-reminders Edge Function
+      → SQL RPC (find what to send)
+      → notify Edge Function (per recipient)
+          → FCM v1 API
+          → notification_log INSERT
+```
+
+Both `pg_cron` and `pg_net` must be explicitly enabled — they are separate extensions and `pg_cron` does not pull in `pg_net` automatically.
+
+### Dedup key must include the scheduled time, not just the item ID
+
+Keying the dedup check on `(item_id)` alone means that if the user reschedules an appointment, the old log row blocks the new reminder. The correct key is `(item_id, scheduled_for)` where `scheduled_for` is the full UTC timestamp the reminder was targeting:
+
+```sql
+AND NOT EXISTS (
+  SELECT 1 FROM notification_log
+  WHERE item_id = a.id
+    AND notification_type = 'reminder'
+    AND success = true
+    AND scheduled_for = a.starts_at   -- ← without this, reschedule = no reminder
+)
+```
+
+### Register the push token on every login, not just the first
+
+FCM tokens rotate after app reinstall, OS update, or token expiry. The correct pattern is to call `getDevicePushTokenAsync()` and overwrite the stored token on every login. The cost is one DB write per session open; the benefit is the token is always fresh.
+
+### Opt-in flag must be checked server-side
+
+The server filters `reminders_enabled = true` from `user_profile` before sending. Never rely on the client to opt itself out — the client may be stale, offline, or uninstalled. The server is the authority on whether to send.
+
+### Time fields used in server-side reminder windows must be stored as UTC
+
+Any time field that the database uses for arithmetic must be in UTC. `start_time` stored as a local time string (`"10:40:00"` for CEST) looks correct to the client but produces wrong results in the RPC. Store with `getUTCHours()`; read back with `setUTCHours()` and display via `toLocaleTimeString()`.
+
+### Date-only fields cannot drive per-minute reminder windows
+
+A `due_date` stored as `date` or as midnight UTC (`2026-07-01 00:00:00+00`) is already in the past by the time users are awake. Reminder windows require a full `timestamptz`. If the domain model only has a date, either:
+
+- Require a start time before allowing a reminder (UI enforcement)
+- Fire at a fixed time on the due date (e.g. 8am) — but you need the user's timezone
+
+### FCM v1: two gotchas that produce silent failures
+
+1. **`android.notification.channel_id` is required** on Android 8+. FCM accepts the request and returns a message ID even without it — but the notification is silently dropped on device. Always include it.
+2. **Service account JSON must be minified without shell escaping issues.** PowerShell's `ConvertTo-Json` pipeline can mangle private key newlines. Use Python: `json.dumps(data, separators=(',', ':'))`.
+
+### Samsung (and other OEMs) aggressively kill FCM background listeners
+
+Battery optimization on Samsung, Xiaomi, Huawei, and OnePlus devices kills background processes including the FCM listener. Notifications only arrive reliably when the app is exempted. Trigger the system dialog when the user first enables notifications:
+
+```ts
+IntentLauncher.startActivityAsync(
+  IntentLauncher.ActivityAction.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+  { data: 'package:your.package.name' },
+);
+```
+This requires `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` in `AndroidManifest.xml` and is a native module — needs a rebuild to take effect.
