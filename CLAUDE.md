@@ -420,3 +420,45 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 ```
+
+---
+
+## 13. Internationalisation (i18n)
+
+The app supports two locales: `de` (German) and `en` (English). Language is a per-user preference stored in `user_profile.language`, changeable in Settings, and applied instantly across the app via i18next.
+
+### 13.1 No hardcoded display text — ever
+Every user-visible string must have an entry in both `src/i18n/de.json` and `src/i18n/en.json`. Never hardcode display text directly in a component, screen, or hook. This applies to:
+- Labels, placeholders, buttons, headings
+- Error and validation messages
+- Empty states
+- Push notification body text
+- Email content
+
+```tsx
+// ❌ Wrong
+<Text>Add Task</Text>
+
+// ✅ Correct
+const { t } = useTranslation();
+<Text>{t('tasks.addTask')}</Text>
+```
+
+### 13.2 Locale definitions
+Both locales use German date and time conventions. They differ only in UI language and number separators.
+
+| Format | `de` | `en` |
+|---|---|---|
+| Date | DD.MM.YYYY | DD.MM.YYYY |
+| Time | 24h | 24h |
+| Decimal separator | `,` → `1,50` | `.` → `1.50` |
+| Thousands separator | `.` → `1.234` | `,` → `1,234` |
+
+### 13.3 All formatting goes through utils/formatters.ts
+Never call `Date.toLocaleDateString()`, `Intl.NumberFormat`, or any formatting API directly in a component. All date, time, and number formatting goes through `src/utils/formatters.ts` which reads the active locale and applies the correct convention.
+
+### 13.4 Server-side translation
+Push notifications and emails must also be translated. Server-side functions (Edge Functions, notification senders) must look up `user_profile.language` before composing text and apply the matching string variant. Never send a hardcoded English or German string to all users.
+
+### 13.5 New features start translated
+When building any new screen or feature, add translation keys to both locale files as part of the same task — not as a follow-up. A feature is not complete until both `de.json` and `en.json` have entries for every string it introduces.

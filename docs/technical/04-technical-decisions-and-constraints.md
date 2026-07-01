@@ -231,7 +231,28 @@ Not a concern at family app scale (4–5 users, few appointments per day). Free 
 
 ---
 
-## 12. Voice Input (resolved)
+## 12. Task & Appointment Permissions (resolved)
+
+### Modify (UPDATE)
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Who can edit a shared task | **Any circle member** | Trusted family circle; edits are visible and recoverable in conversation; no adversarial threat model |
+| Who can edit a private task | **Creator only** | Private tasks are not visible to other members — they can't see or edit them |
+| Field-level restrictions | **None at DB level** | UI hides core fields (title, due date, recurrence) from non-creators as a UX hint, but DB enforces only row-level access |
+| RLS policy | `is_circle_member(circle_id) AND (visibility = 'shared' OR created_by = auth.uid())` | Applied to both USING and WITH CHECK |
+
+### Delete (DELETE)
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Who can delete a task | **Creator or circle admin** | Deletion is irreversible — warrants a slightly higher bar than editing; admin can clean up stale/duplicate tasks |
+| Any circle member can delete | **No** | Too permissive for an irreversible action even in a trusted circle |
+| RLS policy | `created_by = auth.uid() OR is_circle_admin(circle_id)` | `is_circle_admin()` already existed; takes `circle_id` param |
+
+---
+
+## 13. Voice Input (resolved)
 
 | Decision | Choice | Rationale |
 |---|---|---|
