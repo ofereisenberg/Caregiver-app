@@ -88,7 +88,7 @@ Copy-Item $ApkSource $ApkDest
 Write-Host ""
 Write-Host "  Committing version bump ..."
 
-git -C $ProjectRoot add "$ProjectRoot\app.json" "$ProjectRoot\android\app\build.gradle"
+git -C $ProjectRoot add "$ProjectRoot\app.json"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  WARNING: git add failed -- commit and tag skipped." -ForegroundColor Yellow
 } else {
