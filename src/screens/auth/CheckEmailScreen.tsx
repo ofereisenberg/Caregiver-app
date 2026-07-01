@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,6 +16,7 @@ import { getProfile } from '../../services/profile';
 type Props = NativeStackScreenProps<AuthStackParamList, 'CheckEmail'>;
 
 export function CheckEmailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { email } = route.params;
   const { recheckSetup } = useAuth();
   const [code, setCode] = useState('');
@@ -24,7 +27,7 @@ export function CheckEmailScreen({ route, navigation }: Props) {
 
   const handleVerify = async () => {
     if (code.trim().length < 6) {
-      setError('Enter the sign-in code from your email.');
+      setError(t('auth.errorEnterCode'));
       return;
     }
     setLoading(true);
@@ -33,14 +36,14 @@ export function CheckEmailScreen({ route, navigation }: Props) {
     const { error: verifyError } = await verifyOtp(email, code.trim());
     if (verifyError) {
       setLoading(false);
-      setError('Invalid code. Please check your email and try again.');
+      setError(t('auth.errorInvalidCode'));
       return;
     }
 
     const userId = await getCurrentUserId();
     if (!userId) {
       setLoading(false);
-      setError('Something went wrong. Please try again.');
+      setError(t('common.errorSomethingWrong'));
       return;
     }
 
@@ -75,10 +78,9 @@ export function CheckEmailScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ScaledText style={styles.title}>Check your email</ScaledText>
+        <ScaledText style={styles.title}>{t('auth.checkEmail')}</ScaledText>
         <ScaledText style={styles.subtitle}>
-          We sent a sign-in code to{'\n'}
-          <ScaledText style={styles.email}>{email}</ScaledText>
+          {t('auth.checkEmailSubtitle', { email })}
         </ScaledText>
       </View>
 
@@ -105,7 +107,7 @@ export function CheckEmailScreen({ route, navigation }: Props) {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.buttonLabel}>Verify</ScaledText>
+            <ScaledText style={styles.buttonLabel}>{t('auth.verify')}</ScaledText>
           )}
         </TouchableOpacity>
 
@@ -114,7 +116,7 @@ export function CheckEmailScreen({ route, navigation }: Props) {
             <ActivityIndicator size="small" color={theme.colors.sage} />
           ) : (
             <ScaledText style={styles.resendText}>
-              {resent ? 'Sent! Check your inbox.' : "Didn't get it? Resend"}
+              {resent ? t('auth.resent') : t('auth.resend')}
             </ScaledText>
           )}
         </TouchableOpacity>

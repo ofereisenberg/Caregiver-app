@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +14,7 @@ import { sendOtp } from '../../services/auth';
 type Props = NativeStackScreenProps<AuthStackParamList, 'EnterEmail'>;
 
 export function EnterEmailScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { setupStage } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,16 +48,16 @@ export function EnterEmailScreen({ navigation }: Props) {
     <View style={styles.container}>
       <View style={styles.header}>
         <ScaledText style={styles.appName}>Care for Mutti</ScaledText>
-        <ScaledText style={styles.tagline}>Sign in to your care circle</ScaledText>
+        <ScaledText style={styles.tagline}>{t('auth.tagline')}</ScaledText>
       </View>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Email address"
+          placeholder={t('auth.emailPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           value={email}
-          onChangeText={(t) => { setEmail(t); setError(null); }}
+          onChangeText={(text) => { setEmail(text); setError(null); }}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
@@ -71,7 +74,7 @@ export function EnterEmailScreen({ navigation }: Props) {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.buttonLabel}>Send sign-in link</ScaledText>
+            <ScaledText style={styles.buttonLabel}>{t('auth.sendLink')}</ScaledText>
           )}
         </TouchableOpacity>
       </View>

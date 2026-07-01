@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { AuthStackParamList } from '../../navigation/types';
@@ -12,6 +14,7 @@ import { updateDisplayName } from '../../services/profile';
 type Props = NativeStackScreenProps<AuthStackParamList, 'SetupProfile'>;
 
 export function SetupProfileScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +22,7 @@ export function SetupProfileScreen({ navigation }: Props) {
   const handleSave = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Please enter your name.');
+      setError(t('auth.errorEnterName'));
       return;
     }
     setLoading(true);
@@ -28,7 +31,7 @@ export function SetupProfileScreen({ navigation }: Props) {
     const userId = await getCurrentUserId();
     if (!userId) {
       setLoading(false);
-      setError('Something went wrong. Please try again.');
+      setError(t('common.errorSomethingWrong'));
       return;
     }
 
@@ -45,14 +48,14 @@ export function SetupProfileScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ScaledText style={styles.title}>What's your name?</ScaledText>
-        <ScaledText style={styles.subtitle}>This is how you'll appear in the care circle.</ScaledText>
+        <ScaledText style={styles.title}>{t('auth.setupProfileTitle')}</ScaledText>
+        <ScaledText style={styles.subtitle}>{t('auth.setupProfileSubtitle')}</ScaledText>
       </View>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Your name"
+          placeholder={t('auth.namePlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           value={name}
           onChangeText={(t) => { setName(t); setError(null); }}
@@ -72,7 +75,7 @@ export function SetupProfileScreen({ navigation }: Props) {
           {loading ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.buttonLabel}>Continue</ScaledText>
+            <ScaledText style={styles.buttonLabel}>{t('common.continue')}</ScaledText>
           )}
         </TouchableOpacity>
       </View>

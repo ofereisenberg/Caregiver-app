@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +15,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'SetupCircle'>;
 type Tab = 'create' | 'join';
 
 export function SetupCircleScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { recheckSetup } = useAuth();
   const [tab, setTab] = useState<Tab>('create');
   const [circleName, setCircleName] = useState('');
@@ -28,7 +31,7 @@ export function SetupCircleScreen({ navigation }: Props) {
   const handleCreate = async () => {
     const name = circleName.trim();
     if (!name) {
-      setError('Please enter a name for the care circle.');
+      setError(t('auth.errorCircleName'));
       return;
     }
     setLoading(true);
@@ -36,7 +39,7 @@ export function SetupCircleScreen({ navigation }: Props) {
     const { data, error: createError } = await createCareCircle(name);
     setLoading(false);
     if (createError || !data) {
-      setError(createError ?? 'Could not create circle. Please try again.');
+      setError(createError ?? t('auth.errorCreateCircle'));
       return;
     }
     navigation.navigate('InviteManagement');
@@ -45,7 +48,7 @@ export function SetupCircleScreen({ navigation }: Props) {
   const handleJoin = async () => {
     const code = inviteCode.trim().toUpperCase();
     if (!code) {
-      setError('Please enter an invite code.');
+      setError(t('auth.errorEnterInviteCode'));
       return;
     }
     setLoading(true);
@@ -62,8 +65,8 @@ export function SetupCircleScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ScaledText style={styles.title}>Your care circle</ScaledText>
-        <ScaledText style={styles.subtitle}>Create a new circle or join one with an invite code.</ScaledText>
+        <ScaledText style={styles.title}>{t('auth.setupCircleTitle')}</ScaledText>
+        <ScaledText style={styles.subtitle}>{t('auth.setupCircleSubtitle')}</ScaledText>
       </View>
 
       <View style={styles.tabs}>
@@ -72,14 +75,14 @@ export function SetupCircleScreen({ navigation }: Props) {
           onPress={() => switchTab('create')}
           activeOpacity={0.8}
         >
-          <ScaledText style={[styles.tabLabel, tab === 'create' && styles.tabLabelActive]}>Create</ScaledText>
+          <ScaledText style={[styles.tabLabel, tab === 'create' && styles.tabLabelActive]}>{t('auth.tabCreate')}</ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'join' && styles.tabActive]}
           onPress={() => switchTab('join')}
           activeOpacity={0.8}
         >
-          <ScaledText style={[styles.tabLabel, tab === 'join' && styles.tabLabelActive]}>Join</ScaledText>
+          <ScaledText style={[styles.tabLabel, tab === 'join' && styles.tabLabelActive]}>{t('auth.tabJoin')}</ScaledText>
         </TouchableOpacity>
       </View>
 
@@ -88,7 +91,7 @@ export function SetupCircleScreen({ navigation }: Props) {
           <>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Müller family circle"
+              placeholder={t('auth.circleNamePlaceholder')}
               placeholderTextColor={theme.colors.textMuted}
               value={circleName}
               onChangeText={(t) => { setCircleName(t); setError(null); }}
@@ -107,7 +110,7 @@ export function SetupCircleScreen({ navigation }: Props) {
               {loading ? (
                 <ActivityIndicator color={theme.colors.surface} />
               ) : (
-                <ScaledText style={styles.buttonLabel}>Create circle</ScaledText>
+                <ScaledText style={styles.buttonLabel}>{t('auth.createCircleButton')}</ScaledText>
               )}
             </TouchableOpacity>
           </>
@@ -115,7 +118,7 @@ export function SetupCircleScreen({ navigation }: Props) {
           <>
             <TextInput
               style={[styles.input, styles.inputCode]}
-              placeholder="Enter invite code"
+              placeholder={t('auth.inviteCodePlaceholder')}
               placeholderTextColor={theme.colors.textMuted}
               value={inviteCode}
               onChangeText={(t) => { setInviteCode(t); setError(null); }}
@@ -135,7 +138,7 @@ export function SetupCircleScreen({ navigation }: Props) {
               {loading ? (
                 <ActivityIndicator color={theme.colors.surface} />
               ) : (
-                <ScaledText style={styles.buttonLabel}>Join circle</ScaledText>
+                <ScaledText style={styles.buttonLabel}>{t('auth.joinCircle')}</ScaledText>
               )}
             </TouchableOpacity>
           </>

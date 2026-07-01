@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { ScaledText } from '../../components/ScaledText';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +13,7 @@ import { Tables } from '../../types/database';
 type CareCircle = Tables<'care_circle'>;
 
 export function SelectCircleScreen() {
+  const { t } = useTranslation();
   const { session, switchCircle, recheckSetup } = useAuth();
   const [circles, setCircles] = useState<CareCircle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +36,8 @@ export function SelectCircleScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ScaledText style={styles.title}>Choose a circle</ScaledText>
-        <ScaledText style={styles.subtitle}>Select which circle to open.</ScaledText>
+        <ScaledText style={styles.title}>{t('auth.selectCircleTitle')}</ScaledText>
+        <ScaledText style={styles.subtitle}>{t('auth.selectCircleSubtitle')}</ScaledText>
       </View>
 
       {loading ? (
