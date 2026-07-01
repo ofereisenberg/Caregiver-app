@@ -15,6 +15,9 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+import { fmtWeekdayDate, fmtTime } from '../../utils/formatters';
+
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
@@ -34,21 +37,12 @@ type Route = RouteProp<AppStackParamList, 'AddTask'>;
 type ExpandedRow = 'repeat' | 'assign' | 'when' | 'project' | 'reminder' | null;
 type RepeatValue = 'every_few_days' | 'weekly' | 'monthly' | null;
 
-const REPEAT_OPTIONS: { label: string; value: RepeatValue }[] = [
-  { label: 'Every few days', value: 'every_few_days' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
-];
+const REPEAT_VALUES: RepeatValue[] = ['every_few_days', 'weekly', 'monthly'];
 
 type TimePickerMode = 'start' | 'end';
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-function formatTimeDisplay(d: Date): string {
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-}
+const formatDate = fmtWeekdayDate;
+const formatTimeDisplay = fmtTime;
 
 function makeTodayAt(hour: number): Date {
   const d = new Date();
@@ -62,6 +56,7 @@ function timeToString(t: Date | null): string | null {
 }
 
 export function AddTaskScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { session } = useAuth();
@@ -159,6 +154,16 @@ export function AddTaskScreen() {
     }
   }, [title, circle, session, repeat, assignee, dueDate, onlyMe, reminderOffsetMinutes, route.params, navigation]);
 
+  function repeatLabel(value: RepeatValue): string {
+    if (!value) return t('tasks.repeatOneOff');
+    const map: Record<string, string> = {
+      every_few_days: t('tasks.repeatEveryFewDays'),
+      weekly: t('tasks.repeatWeekly'),
+      monthly: t('tasks.repeatMonthly'),
+    };
+    return map[value] ?? t('tasks.repeatOneOff');
+  }
+
   const vacationWarning = useMemo(() => {
     if (!assignee || assignee.type !== 'user' || !dueDate) return null;
     const dueDateKey = toLocalISODate(dueDate);
@@ -185,13 +190,13 @@ export function AddTaskScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <ScaledText style={styles.heading}>What needs doing?</ScaledText>
+        <ScaledText style={styles.heading}>{t('tasks.addHeading')}</ScaledText>
 
         {/* Title input */}
         <TextInput
           ref={titleRef}
           style={styles.titleInput}
-          placeholder="Task title"
+          placeholder={t('tasks.titlePlaceholder')}
           placeholderTextColor={theme.colors.textFaint}
           value={title}
           onChangeText={setTitle}
@@ -205,27 +210,23 @@ export function AddTaskScreen() {
         {/* Repeat row */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('repeat')}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Repeat
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('tasks.repeatLabel')}
           </ScaledText>
-          <ScaledText style={styles.expandRowValue}>
-            {repeat
-              ? REPEAT_OPTIONS.find((o) => o.value === repeat)?.label ?? 'One-off'
-              : 'One-off'}
-          </ScaledText>
+          <ScaledText style={styles.expandRowValue}>{repeatLabel(repeat)}</ScaledText>
         </TouchableOpacity>
         {expandedRow === 'repeat' && (
           <View style={styles.chipRow}>
-            {REPEAT_OPTIONS.map((opt) => (
+            {REPEAT_VALUES.map((value) => (
               <TouchableOpacity
-                key={opt.value}
-                style={[styles.chip, repeat === opt.value && styles.chipSelected]}
+                key={value}
+                style={[styles.chip, repeat === value && styles.chipSelected]}
                 onPress={() => {
-                  setRepeat(repeat === opt.value ? null : opt.value);
+                  setRepeat(repeat === value ? null : value);
                   setExpandedRow(null);
                 }}
               >
-                <ScaledText style={[styles.chipLabel, repeat === opt.value && styles.chipLabelSelected]}>
-                  {opt.label}
+                <ScaledText style={[styles.chipLabel, repeat === value && styles.chipLabelSelected]}>
+                  {repeatLabel(value)}
                 </ScaledText>
               </TouchableOpacity>
             ))}
@@ -236,7 +237,7 @@ export function AddTaskScreen() {
         {/* Assign row */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('assign')}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Assign
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('tasks.assignLabel')}
           </ScaledText>
           <ScaledText style={styles.expandRowValue}>
             {resolvePersonName(assignee, members, externalContacts)}
@@ -290,10 +291,10 @@ export function AddTaskScreen() {
         {/* When row */}
         <TouchableOpacity style={styles.expandRow} onPress={handleWhenPress}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>When
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('tasks.whenLabel')}
           </ScaledText>
           <ScaledText style={styles.expandRowValue}>
-            {dueDate ? formatDate(dueDate) : 'No date'}
+            {dueDate ? formatDate(dueDate) : t('tasks.noDate')}
           </ScaledText>
         </TouchableOpacity>
         {Platform.OS === 'ios' && expandedRow === 'when' && (
@@ -349,8 +350,8 @@ export function AddTaskScreen() {
         {/* Only me toggle */}
         <View style={styles.toggleRow}>
           <View>
-            <ScaledText style={styles.toggleLabel}>Only me</ScaledText>
-            <ScaledText style={styles.toggleSubLabel}>Hidden from other circle members</ScaledText>
+            <ScaledText style={styles.toggleLabel}>{t('tasks.onlyMe')}</ScaledText>
+            <ScaledText style={styles.toggleSubLabel}>{t('tasks.onlyMeSubtitle')}</ScaledText>
           </View>
           <Switch
             value={onlyMe}
@@ -366,10 +367,10 @@ export function AddTaskScreen() {
             <View style={styles.rowDivider} />
             <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('project')}>
               <ScaledText style={styles.expandRowLabel}>
-                <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Project
+                <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('tasks.projectLabel')}
               </ScaledText>
               <ScaledText style={styles.expandRowValue}>
-                {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
+                {projectId ? (projects.find((p) => p.id === projectId)?.title ?? t('common.none')) : t('common.none')}
               </ScaledText>
             </TouchableOpacity>
             {expandedRow === 'project' && (
@@ -378,7 +379,7 @@ export function AddTaskScreen() {
                   style={[styles.chip, projectId === null && styles.chipSelected]}
                   onPress={() => { setProjectId(null); setExpandedRow(null); }}
                 >
-                  <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</ScaledText>
+                  <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>{t('common.none')}</ScaledText>
                 </TouchableOpacity>
                 {projects.filter((p) => p.status !== 'done').map((proj) => (
                   <TouchableOpacity
@@ -409,7 +410,7 @@ export function AddTaskScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.addButtonLabel}>Add task</ScaledText>
+            <ScaledText style={styles.addButtonLabel}>{t('tasks.addButton')}</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>

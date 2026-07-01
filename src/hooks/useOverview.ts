@@ -78,7 +78,7 @@ export function useOverview(
 
   const sections: OverviewSection[] = filter === 'done'
     ? (tasks.length > 0
-        ? [{ key: 'done' as const, title: 'Completed', count: tasks.length, data: tasks.map(t => ({ kind: 'task' as const, data: t })) }]
+        ? [{ key: 'done' as const, count: tasks.length, data: tasks.map(t => ({ kind: 'task' as const, data: t })) }]
         : [])
     : groupOverviewIntoSections(tasks, appointments);
 

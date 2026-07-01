@@ -15,6 +15,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+import { fmtWeekdayDate, fmtTime } from '../../utils/formatters';
+
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
@@ -33,13 +36,7 @@ type Route = RouteProp<AppStackParamList, 'AddAppointment'>;
 type PickerMode = 'start-date' | 'end-date' | 'start-time' | 'end-time';
 type ExpandedRow = 'location' | 'repeat' | 'assign' | 'project' | 'reminder';
 
-const RECURRENCE_OPTIONS: { label: string; value: string | null }[] = [
-  { label: "Don't repeat", value: null },
-  { label: 'Every day', value: 'daily' },
-  { label: 'Every week', value: 'weekly' },
-  { label: 'Every month', value: 'monthly' },
-  { label: 'Every year', value: 'yearly' },
-];
+const RECURRENCE_VALUES: (string | null)[] = [null, 'daily', 'weekly', 'monthly', 'yearly'];
 
 function getInitialStart(dateParam?: string): Date {
   const d = dateParam ? new Date(dateParam + 'T00:00:00') : new Date();
@@ -48,15 +45,11 @@ function getInitialStart(dateParam?: string): Date {
   return d;
 }
 
-function formatDateDisplay(d: Date): string {
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-function formatTimeDisplay(d: Date): string {
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-}
+const formatDateDisplay = fmtWeekdayDate;
+const formatTimeDisplay = fmtTime;
 
 export function AddAppointmentScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { session } = useAuth();
@@ -249,13 +242,23 @@ export function AddAppointmentScreen() {
 
   const canAdd = title.trim().length > 0 && (isFullDay || endDate > startDate) && !saving;
 
-  const recurrenceLabel = RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? "Don't repeat";
+  function recurrenceLabel(value: string | null): string {
+    if (!value) return t('appointments.recurrenceNone');
+    const map: Record<string, string> = {
+      daily: t('appointments.recurrenceDaily'),
+      weekly: t('appointments.recurrenceWeekly'),
+      monthly: t('appointments.recurrenceMonthly'),
+      yearly: t('appointments.recurrenceYearly'),
+    };
+    return map[value] ?? t('appointments.recurrenceNone');
+  }
+
   const inviteeLabel = useMemo(() => {
     const userNames = inviteeIds.map((id) => members.find((m) => m.user_id === id)?.displayName.split(' ')[0] ?? id);
     const extNames = externalInviteeIds.map((id) => externalContacts.find((c) => c.id === id)?.display_name.split(' ')[0] ?? id);
     const all = [...userNames, ...extNames];
-    return all.length === 0 ? 'Nobody' : all.join(', ');
-  }, [inviteeIds, externalInviteeIds, members, externalContacts]);
+    return all.length === 0 ? t('appointments.nobody') : all.join(', ');
+  }, [inviteeIds, externalInviteeIds, members, externalContacts, t]);
 
   const pickerValue = pickerMode === 'start-date' || pickerMode === 'start-time' ? startDate : endDate;
 
@@ -270,17 +273,17 @@ export function AddAppointmentScreen() {
       >
         {sourceTaskTitle && (
           <View style={styles.sourceBanner}>
-            <ScaledText style={styles.sourceBannerLabel}>New appointment</ScaledText>
-            <ScaledText style={styles.sourceBannerTask} numberOfLines={1}>from "{sourceTaskTitle}"</ScaledText>
+            <ScaledText style={styles.sourceBannerLabel}>{t('appointments.newAppointmentBanner')}</ScaledText>
+            <ScaledText style={styles.sourceBannerTask} numberOfLines={1}>{t('appointments.fromTask', { title: sourceTaskTitle })}</ScaledText>
           </View>
         )}
 
-        <ScaledText style={styles.heading}>{isEditMode ? 'Edit appointment' : 'New appointment'}</ScaledText>
+        <ScaledText style={styles.heading}>{isEditMode ? t('appointments.headingEdit') : t('appointments.headingNew')}</ScaledText>
 
         {/* Title */}
         <TextInput
           style={styles.titleInput}
-          placeholder="Title"
+          placeholder={t('appointments.inputTitlePlaceholder')}
           placeholderTextColor={theme.colors.textFaint}
           value={title}
           onChangeText={setTitle}
@@ -291,7 +294,7 @@ export function AddAppointmentScreen() {
         <View style={styles.inputDivider} />
         <TextInput
           style={styles.detailsInput}
-          placeholder="Notes"
+          placeholder={t('appointments.inputNotesPlaceholder')}
           placeholderTextColor={theme.colors.textFaint}
           value={details}
           onChangeText={setDetails}
@@ -306,7 +309,7 @@ export function AddAppointmentScreen() {
           {/* All day toggle */}
           <View style={styles.allDayRow}>
             <Ionicons name="time-outline" size={18} color={theme.colors.textMuted} />
-            <ScaledText style={styles.allDayLabel}>All day</ScaledText>
+            <ScaledText style={styles.allDayLabel}>{t('appointments.allDay')}</ScaledText>
             <Switch
               value={isFullDay}
               onValueChange={setIsFullDay}
@@ -352,7 +355,7 @@ export function AddAppointmentScreen() {
         {/* Location */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('location')}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Location
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('appointments.locationLabel')}
           </ScaledText>
           {location.length > 0 && (
             <ScaledText style={styles.expandRowValue} numberOfLines={1}>{location}</ScaledText>
@@ -362,7 +365,7 @@ export function AddAppointmentScreen() {
           <TextInput
             ref={locationInputRef}
             style={styles.locationInput}
-            placeholder="Address or place name"
+            placeholder={t('appointments.locationPlaceholder')}
             placeholderTextColor={theme.colors.textFaint}
             value={location}
             onChangeText={setLocation}
@@ -375,20 +378,20 @@ export function AddAppointmentScreen() {
         {/* Repeat */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('repeat')}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Repeat
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('appointments.repeatLabel')}
           </ScaledText>
-          <ScaledText style={styles.expandRowValue}>{recurrenceLabel}</ScaledText>
+          <ScaledText style={styles.expandRowValue}>{recurrenceLabel(recurrence)}</ScaledText>
         </TouchableOpacity>
         {expandedRow === 'repeat' && (
           <View style={styles.optionList}>
-            {RECURRENCE_OPTIONS.map((opt) => (
+            {RECURRENCE_VALUES.map((value) => (
               <TouchableOpacity
-                key={String(opt.value)}
-                style={[styles.optionRow, recurrence === opt.value && styles.optionRowSelected]}
-                onPress={() => { setRecurrence(opt.value); setExpandedRow(null); }}
+                key={String(value)}
+                style={[styles.optionRow, recurrence === value && styles.optionRowSelected]}
+                onPress={() => { setRecurrence(value); setExpandedRow(null); }}
               >
-                <ScaledText style={[styles.optionLabel, recurrence === opt.value && styles.optionLabelSelected]}>
-                  {opt.label}
+                <ScaledText style={[styles.optionLabel, recurrence === value && styles.optionLabelSelected]}>
+                  {recurrenceLabel(value)}
                 </ScaledText>
               </TouchableOpacity>
             ))}
@@ -399,7 +402,7 @@ export function AddAppointmentScreen() {
         {/* With (assignee) */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('assign')}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>With
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('appointments.withLabel')}
           </ScaledText>
           <ScaledText style={styles.expandRowValue}>{inviteeLabel}</ScaledText>
         </TouchableOpacity>
@@ -459,7 +462,7 @@ export function AddAppointmentScreen() {
 
         <View style={styles.rowDivider} />
         <View style={styles.visibilityRow}>
-          <ScaledText style={styles.expandRowLabel}>Only me</ScaledText>
+          <ScaledText style={styles.expandRowLabel}>{t('tasks.onlyMe')}</ScaledText>
           <Switch
             value={visibility === 'private'}
             onValueChange={(v) => setVisibility(v ? 'private' : 'shared')}
@@ -474,10 +477,10 @@ export function AddAppointmentScreen() {
             <View style={styles.rowDivider} />
             <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('project')}>
               <ScaledText style={styles.expandRowLabel}>
-                <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Project
+                <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('tasks.projectLabel')}
               </ScaledText>
               <ScaledText style={styles.expandRowValue}>
-                {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
+                {projectId ? (projects.find((p) => p.id === projectId)?.title ?? t('common.none')) : t('common.none')}
               </ScaledText>
             </TouchableOpacity>
             {expandedRow === 'project' && (
@@ -486,7 +489,7 @@ export function AddAppointmentScreen() {
                   style={[styles.chip, projectId === null && styles.chipSelected]}
                   onPress={() => { setProjectId(null); setExpandedRow(null); }}
                 >
-                  <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</ScaledText>
+                  <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>{t('common.none')}</ScaledText>
                 </TouchableOpacity>
                 {projects.filter((p) => p.status !== 'done').map((proj) => (
                   <TouchableOpacity
@@ -515,7 +518,7 @@ export function AddAppointmentScreen() {
         >
           {saving
             ? <ActivityIndicator color={theme.colors.surface} />
-            : <ScaledText style={styles.addButtonLabel}>{isEditMode ? 'Save changes' : 'Add appointment'}</ScaledText>
+            : <ScaledText style={styles.addButtonLabel}>{isEditMode ? t('appointments.saveButton') : t('appointments.addButton')}</ScaledText>
           }
         </TouchableOpacity>
       </ScrollView>

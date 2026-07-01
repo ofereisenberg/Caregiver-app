@@ -9,6 +9,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
 import { useAppointmentList } from '../../hooks/useAppointmentList';
@@ -20,6 +22,7 @@ import { Task } from '../../services/tasks';
 import { Vacation } from '../../services/vacations';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { fmtLongWeekdayDateYear, fmtTime, fmtShortDate } from '../../utils/formatters';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'DayDetail'>;
@@ -32,22 +35,18 @@ const TASK_COLOR = '#5a9e6f';
 const TASK_BG = '#eaf4ee';
 
 function formatDate(dateKey: string): string {
-  const d = new Date(dateKey + 'T00:00:00');
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function formatApptTime(appt: Appointment): string {
-  if (appt.is_full_day) return 'All day';
-  const start = new Date(appt.starts_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (!appt.ends_at) return start;
-  const end = new Date(appt.ends_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${start} – ${end}`;
+  return fmtLongWeekdayDateYear(dateKey + 'T00:00:00');
 }
 
 function formatDateRange(start: string, end: string): string {
-  const s = new Date(start + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  const e = new Date(end + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  return `${s} – ${e}`;
+  return `${fmtShortDate(start + 'T00:00:00')} – ${fmtShortDate(end + 'T00:00:00')}`;
+}
+
+function formatApptTime(appt: Appointment, allDayLabel: string): string {
+  if (appt.is_full_day) return allDayLabel;
+  const start = fmtTime(appt.starts_at);
+  if (!appt.ends_at) return start;
+  return `${start} – ${fmtTime(appt.ends_at)}`;
 }
 
 function toDateKey(iso: string): string {
@@ -55,6 +54,7 @@ function toDateKey(iso: string): string {
 }
 
 export function DayDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { dateKey } = route.params;
@@ -107,14 +107,14 @@ export function DayDetailScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {isEmpty && (
           <View style={styles.empty}>
-            <ScaledText style={styles.emptyText}>Nothing on this day</ScaledText>
+            <ScaledText style={styles.emptyText}>{t('calendar.nothingOnThisDay')}</ScaledText>
           </View>
         )}
 
         {/* Vacations */}
         {dayVacations.length > 0 && (
           <View style={styles.section}>
-            <ScaledText style={[styles.sectionLabel, { color: VACATION_COLOR }]}>On vacation</ScaledText>
+            <ScaledText style={[styles.sectionLabel, { color: VACATION_COLOR }]}>{t('calendar.onVacation')}</ScaledText>
             {dayVacations.map((v) => (
               <TouchableOpacity
                 key={v.id}
@@ -130,7 +130,7 @@ export function DayDetailScreen() {
                   </ScaledText>
                   {v.with_member_ids.length > 0 && (
                     <ScaledText style={styles.cardMeta}>
-                      With: {v.with_member_ids
+                      {t('appointments.withLabel')}: {v.with_member_ids
                         .map((id) => members.find((m) => m.user_id === id)?.displayName ?? id)
                         .join(', ')}
                     </ScaledText>
@@ -145,7 +145,7 @@ export function DayDetailScreen() {
         {/* Appointments */}
         {dayAppointments.length > 0 && (
           <View style={styles.section}>
-            <ScaledText style={[styles.sectionLabel, { color: APPT_COLOR }]}>Appointments</ScaledText>
+            <ScaledText style={[styles.sectionLabel, { color: APPT_COLOR }]}>{t('appointments.screenTitle')}</ScaledText>
             {dayAppointments.map((appt) => (
               <TouchableOpacity
                 key={appt.id}
@@ -156,7 +156,7 @@ export function DayDetailScreen() {
                 <View style={[styles.colorBar, { backgroundColor: APPT_COLOR }]} />
                 <View style={styles.cardBody}>
                   <ScaledText style={styles.cardTitle}>{appt.title}</ScaledText>
-                  <ScaledText style={styles.cardMeta}>{formatApptTime(appt)}</ScaledText>
+                  <ScaledText style={styles.cardMeta}>{formatApptTime(appt, t('appointments.allDay'))}</ScaledText>
                   {appt.location ? (
                     <ScaledText style={styles.cardMeta}>{appt.location}</ScaledText>
                   ) : null}
@@ -170,7 +170,7 @@ export function DayDetailScreen() {
         {/* Tasks */}
         {dayTasks.length > 0 && (
           <View style={styles.section}>
-            <ScaledText style={[styles.sectionLabel, { color: TASK_COLOR }]}>Tasks due</ScaledText>
+            <ScaledText style={[styles.sectionLabel, { color: TASK_COLOR }]}>{t('calendar.tasksDue')}</ScaledText>
             {dayTasks.map((task) => (
               <TouchableOpacity
                 key={task.id}

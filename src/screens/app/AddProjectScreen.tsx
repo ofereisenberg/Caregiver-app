@@ -14,6 +14,9 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { useTranslation } from 'react-i18next';
+import { fmtWeekdayDate } from '../../utils/formatters';
+
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
@@ -28,11 +31,10 @@ type Nav = NativeStackNavigationProp<AppStackParamList>;
 
 type ExpandedRow = 'owner' | 'when' | null;
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-}
+const formatDate = fmtWeekdayDate;
 
 export function AddProjectScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { session } = useAuth();
   const { circle, members } = useCircle();
@@ -107,12 +109,12 @@ export function AddProjectScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <ScaledText style={styles.heading}>New project</ScaledText>
+        <ScaledText style={styles.heading}>{t('projects.newHeading')}</ScaledText>
 
         <TextInput
           ref={titleRef}
           style={styles.titleInput}
-          placeholder="Project name"
+          placeholder={t('projects.namePlaceholder')}
           placeholderTextColor={theme.colors.textFaint}
           value={title}
           onChangeText={setTitle}
@@ -124,7 +126,7 @@ export function AddProjectScreen() {
 
         <TextInput
           style={styles.descInput}
-          placeholder="Description (optional)"
+          placeholder={t('projects.descriptionPlaceholder')}
           placeholderTextColor={theme.colors.textFaint}
           value={description}
           onChangeText={setDescription}
@@ -137,7 +139,7 @@ export function AddProjectScreen() {
         {/* Owner row */}
         <TouchableOpacity style={styles.expandRow} onPress={() => toggleRow('owner')}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Owner
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('projects.ownerLabel')}
           </ScaledText>
           <ScaledText style={styles.expandRowValue}>{ownerName}</ScaledText>
         </TouchableOpacity>
@@ -147,7 +149,7 @@ export function AddProjectScreen() {
               style={[styles.chip, owner === null && styles.chipSelected]}
               onPress={() => { setOwner(null); setExpandedRow(null); }}
             >
-              <ScaledText style={[styles.chipLabel, owner === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
+              <ScaledText style={[styles.chipLabel, owner === null && styles.chipLabelSelected]}>{t('tasks.unassigned')}</ScaledText>
             </TouchableOpacity>
             {members.map((member) => {
               const selected = owner?.type === 'user' && owner.id === member.user_id;
@@ -189,9 +191,9 @@ export function AddProjectScreen() {
         {/* Due date row */}
         <TouchableOpacity style={styles.expandRow} onPress={handleWhenPress}>
           <ScaledText style={styles.expandRowLabel}>
-            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>Due date
+            <ScaledText style={styles.expandRowPlus}>+ </ScaledText>{t('projects.dueDateLabel')}
           </ScaledText>
-          <ScaledText style={styles.expandRowValue}>{dueDate ? formatDate(dueDate) : 'None'}</ScaledText>
+          <ScaledText style={styles.expandRowValue}>{dueDate ? formatDate(dueDate) : t('common.none')}</ScaledText>
         </TouchableOpacity>
         {Platform.OS === 'ios' && expandedRow === 'when' && (
           <DateTimePicker
@@ -208,7 +210,7 @@ export function AddProjectScreen() {
             style={styles.clearRow}
             onPress={() => setDueDate(null)}
           >
-            <ScaledText style={styles.clearLabel}>Remove date</ScaledText>
+            <ScaledText style={styles.clearLabel}>{t('tasks.removeDate')}</ScaledText>
           </TouchableOpacity>
         )}
         <View style={styles.rowDivider} />
@@ -216,8 +218,8 @@ export function AddProjectScreen() {
         {/* Visibility toggle */}
         <View style={styles.toggleRow}>
           <View>
-            <ScaledText style={styles.toggleLabel}>Only me</ScaledText>
-            <ScaledText style={styles.toggleSubLabel}>Hidden from other circle members</ScaledText>
+            <ScaledText style={styles.toggleLabel}>{t('tasks.onlyMe')}</ScaledText>
+            <ScaledText style={styles.toggleSubLabel}>{t('tasks.onlyMeSubtitle')}</ScaledText>
           </View>
           <Switch
             value={onlyMe}
@@ -238,7 +240,7 @@ export function AddProjectScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.addButtonLabel}>Create project</ScaledText>
+            <ScaledText style={styles.addButtonLabel}>{t('projects.createButton')}</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>

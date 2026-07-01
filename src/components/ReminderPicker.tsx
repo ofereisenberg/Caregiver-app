@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../constants/theme';
 import { ScaledText } from './ScaledText';
 
-const PRESETS: { label: string; minutes: number }[] = [
-  { label: '15 min before', minutes: 15 },
-  { label: '30 min before', minutes: 30 },
-  { label: '1 hour before', minutes: 60 },
-  { label: '2 hours before', minutes: 120 },
-  { label: '1 day before', minutes: 1440 },
-];
+const PRESET_MINUTES = [15, 30, 60, 120, 1440];
 
 const UNIT_ITEMS = ['min', 'hours', 'days'] as const;
 type Unit = typeof UNIT_ITEMS[number];
@@ -29,15 +24,6 @@ function parseCustom(minutes: number): { num: string; unit: Unit } {
   return { num: String(Math.min(Math.max(minutes, 1), 99)), unit: 'min' };
 }
 
-function formatReminder(minutes: number | null): string {
-  if (minutes === null) return 'None';
-  const preset = PRESETS.find((p) => p.minutes === minutes);
-  if (preset) return preset.label;
-  if (minutes < 60) return `${minutes} min before`;
-  if (minutes < 1440) return `${Math.round(minutes / 60)} hours before`;
-  return `${Math.round(minutes / 1440)} days before`;
-}
-
 interface ReminderPickerProps {
   value: number | null;
   onChange: (minutes: number | null) => void;
@@ -47,7 +33,9 @@ interface ReminderPickerProps {
 }
 
 export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled = false }: ReminderPickerProps) {
-  const isPreset = value !== null && PRESETS.some((p) => p.minutes === value);
+  const { t } = useTranslation();
+
+  const isPreset = value !== null && PRESET_MINUTES.includes(value);
   const isCustom = value !== null && !isPreset;
 
   const existingCustom = isCustom && value !== null ? parseCustom(value) : null;
@@ -64,6 +52,27 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
       setUnitOpen(false);
     }
   }, [isExpanded]);
+
+  function presetLabel(minutes: number): string {
+    if (minutes < 60) return t('appointments.reminderMinutesBefore', { count: minutes });
+    if (minutes < 1440) {
+      const h = Math.round(minutes / 60);
+      return h === 1 ? t('appointments.reminderHourBefore') : t('appointments.reminderHoursBefore', { count: h });
+    }
+    const d = Math.round(minutes / 1440);
+    return d === 1 ? t('appointments.reminderDayBefore') : t('appointments.reminderDaysBefore', { count: d });
+  }
+
+  function formatReminder(minutes: number | null): string {
+    if (minutes === null) return t('common.none');
+    return presetLabel(minutes);
+  }
+
+  const unitLabels: Record<Unit, string> = {
+    min: t('appointments.unitMin'),
+    hours: t('appointments.unitHours'),
+    days: t('appointments.unitDays'),
+  };
 
   function openCustom() {
     if (isCustom && value !== null) {
@@ -97,10 +106,10 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
       {/* Remind me row */}
       <TouchableOpacity style={styles.expandRow} onPress={onToggle} disabled={disabled}>
         <ScaledText style={[styles.label, disabled && styles.labelDisabled]}>
-          <ScaledText style={[styles.plus, disabled && styles.plusDisabled]}>+ </ScaledText>Remind me
+          <ScaledText style={[styles.plus, disabled && styles.plusDisabled]}>+ </ScaledText>{t('appointments.remindMeLabel')}
         </ScaledText>
         <ScaledText style={[styles.value, disabled && styles.valueDisabled]}>
-          {disabled ? 'Set a time first' : formatReminder(value)}
+          {disabled ? t('appointments.setTimeFirst') : formatReminder(value)}
         </ScaledText>
       </TouchableOpacity>
 
@@ -112,20 +121,20 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
             onPress={() => { onChange(null); onToggle(); }}
           >
             <ScaledText style={[styles.chipLabel, value === null && styles.chipLabelSelected]}>
-              None
+              {t('common.none')}
             </ScaledText>
           </TouchableOpacity>
 
-          {PRESETS.map((preset) => {
-            const selected = value === preset.minutes;
+          {PRESET_MINUTES.map((minutes) => {
+            const selected = value === minutes;
             return (
               <TouchableOpacity
-                key={preset.minutes}
+                key={minutes}
                 style={[styles.chip, selected && styles.chipSelected]}
-                onPress={() => { onChange(preset.minutes); onToggle(); }}
+                onPress={() => { onChange(minutes); onToggle(); }}
               >
                 <ScaledText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
-                  {preset.label}
+                  {presetLabel(minutes)}
                 </ScaledText>
               </TouchableOpacity>
             );
@@ -136,7 +145,7 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
             onPress={openCustom}
           >
             <ScaledText style={[styles.chipLabel, isCustom && styles.chipLabelSelected]}>
-              Custom
+              {t('appointments.reminderCustom')}
             </ScaledText>
           </TouchableOpacity>
         </View>
@@ -166,7 +175,7 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
                 onPress={() => setUnitOpen((v) => !v)}
                 activeOpacity={0.75}
               >
-                <ScaledText style={styles.unitLabel}>{unit}</ScaledText>
+                <ScaledText style={styles.unitLabel}>{unitLabels[unit]}</ScaledText>
                 <Ionicons
                   name={unitOpen ? 'chevron-up' : 'chevron-down'}
                   size={14}
@@ -187,7 +196,7 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
                       activeOpacity={0.7}
                     >
                       <ScaledText style={[styles.dropdownItemText, u === unit && styles.dropdownItemTextSelected]}>
-                        {u}
+                        {unitLabels[u]}
                       </ScaledText>
                       {u === unit && (
                         <Ionicons name="checkmark" size={14} color={theme.colors.sageDark} />
@@ -206,7 +215,7 @@ export function ReminderPicker({ value, onChange, isExpanded, onToggle, disabled
             disabled={!canDone}
             activeOpacity={0.85}
           >
-            <ScaledText style={styles.doneLabel}>Done</ScaledText>
+            <ScaledText style={styles.doneLabel}>{t('common.done')}</ScaledText>
           </TouchableOpacity>
         </View>
       )}

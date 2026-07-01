@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../constants/theme';
 import { ScaledText } from './ScaledText';
@@ -10,6 +11,7 @@ import { Appointment } from '../services/appointments';
 import { Task } from '../services/tasks';
 import { OverviewItem } from '../utils/overviewGrouping';
 import { isTaskOverdue } from '../utils/taskGrouping';
+import { fmtWeekdayDate, fmtTime, fmtShortDate } from '../utils/formatters';
 
 const AVATAR_COLORS = [
   theme.colors.sageTint,
@@ -30,31 +32,6 @@ interface Props {
   menuItems?: DropdownMenuItem[];
 }
 
-function formatApptMeta(appt: Appointment): string {
-  const startDate = new Date(appt.starts_at);
-  const dateStr = startDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  if (appt.is_full_day) return `${dateStr} · All day`;
-  const startTime = startDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (!appt.ends_at) return `${dateStr} · ${startTime}`;
-  const endTime = new Date(appt.ends_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${dateStr} · ${startTime} – ${endTime}`;
-}
-
-function formatTaskMeta(task: Task): string | null {
-  if (!task.due_date) return null;
-  const dateStr = new Date(task.due_date).toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
-  if (!task.start_time) return dateStr;
-  const [sh, sm] = task.start_time.split(':').map(Number);
-  const start = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-  if (!task.end_time) return `${dateStr} · ${start}`;
-  const [eh, em] = task.end_time.split(':').map(Number);
-  const end = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
-  return `${dateStr} · ${start} – ${end}`;
-}
 
 function ItemMenu({ items }: { items: DropdownMenuItem[] }) {
   return (
@@ -77,6 +54,28 @@ function ItemMenu({ items }: { items: DropdownMenuItem[] }) {
 }
 
 export function OverviewItemRow({ item, memberMap, externalContactMap, projectMap, onPress, onComplete, onUncheck, onProjectTagPress, menuItems }: Props) {
+  const { t } = useTranslation();
+
+  function apptMeta(appt: Appointment): string {
+    const dateStr = fmtWeekdayDate(appt.starts_at);
+    if (appt.is_full_day) return `${dateStr} · ${t('appointments.allDay')}`;
+    const startTime = fmtTime(appt.starts_at);
+    if (!appt.ends_at) return `${dateStr} · ${startTime}`;
+    return `${dateStr} · ${startTime} – ${fmtTime(appt.ends_at)}`;
+  }
+
+  function taskMeta(task: Task): string | null {
+    if (!task.due_date) return null;
+    const dateStr = fmtShortDate(task.due_date);
+    if (!task.start_time) return dateStr;
+    const [sh, sm] = task.start_time.split(':').map(Number);
+    const start = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+    if (!task.end_time) return `${dateStr} · ${start}`;
+    const [eh, em] = task.end_time.split(':').map(Number);
+    const end = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    return `${dateStr} · ${start} – ${end}`;
+  }
+
   if (item.kind === 'appointment') {
     const appt = item.data;
     const projectName = appt.project_id && projectMap ? projectMap.get(appt.project_id) : null;
@@ -88,7 +87,7 @@ export function OverviewItemRow({ item, memberMap, externalContactMap, projectMa
         </View>
         <View style={styles.content}>
           <ScaledText style={styles.title} numberOfLines={2}>{appt.title}</ScaledText>
-          <ScaledText style={styles.apptMeta}>{formatApptMeta(appt)}</ScaledText>
+          <ScaledText style={styles.apptMeta}>{apptMeta(appt)}</ScaledText>
           {!!appt.location && (
             <ScaledText style={styles.apptLocation} numberOfLines={1}>{appt.location}</ScaledText>
           )}
@@ -106,7 +105,7 @@ export function OverviewItemRow({ item, memberMap, externalContactMap, projectMa
 
   const task = item.data;
   const overdue = isTaskOverdue(task.due_date);
-  const taskMeta = formatTaskMeta(task);
+  const taskMetaStr = taskMeta(task);
   const member = task.assignee ? memberMap.get(task.assignee) : null;
   const externalName = task.external_assignee_id ? (externalContactMap?.get(task.external_assignee_id) ?? null) : null;
   const idx = member?.index ?? 0;
@@ -136,15 +135,15 @@ export function OverviewItemRow({ item, memberMap, externalContactMap, projectMa
         <View style={styles.taskMeta}>
           {overdue && (
             <View style={styles.overdueBadge}>
-              <ScaledText style={styles.overdueBadgeText}>Overdue</ScaledText>
+              <ScaledText style={styles.overdueBadgeText}>{t('tasks.overdueBadge')}</ScaledText>
             </View>
           )}
-          {taskMeta !== null && (
-            <ScaledText style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{taskMeta}</ScaledText>
+          {taskMetaStr !== null && (
+            <ScaledText style={[styles.dueLabel, overdue && styles.dueLabelOverdue]}>{taskMetaStr}</ScaledText>
           )}
           {!!task.recurrence && (
             <View style={styles.repeatsBadge}>
-              <ScaledText style={styles.repeatsBadgeText}>Repeats</ScaledText>
+              <ScaledText style={styles.repeatsBadgeText}>{t('tasks.repeatsBadge')}</ScaledText>
             </View>
           )}
         </View>

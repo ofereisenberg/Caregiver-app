@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { AddAppointmentScreen } from '../screens/app/AddAppointmentScreen';
 import { AddProjectScreen } from '../screens/app/AddProjectScreen';
@@ -30,6 +31,7 @@ const Stack = createNativeStackNavigator<AppStackParamList>();
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -52,7 +54,7 @@ function MainTabs() {
         name="Tasks"
         component={TaskListScreen}
         options={{
-          tabBarLabel: 'Overview',
+          tabBarLabel: t('tasks.overviewTitle'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
@@ -62,6 +64,7 @@ function MainTabs() {
         name="Projects"
         component={ProjectsScreen}
         options={{
+          tabBarLabel: t('projects.screenTitle'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="folder-outline" size={size} color={color} />
           ),
@@ -71,6 +74,7 @@ function MainTabs() {
         name="Calendar"
         component={CalendarScreen}
         options={{
+          tabBarLabel: t('calendar.screenTitle'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
           ),

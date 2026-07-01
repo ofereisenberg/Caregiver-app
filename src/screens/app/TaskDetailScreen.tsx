@@ -16,6 +16,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
 import { useExternalContacts } from '../../hooks/useExternalContacts';
@@ -28,6 +30,7 @@ import { ReminderPicker } from '../../components/ReminderPicker';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 import { toLocalISODate } from '../../utils/dateUtils';
+import { fmtTime } from '../../utils/formatters';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'TaskDetail'>;
@@ -35,9 +38,7 @@ type Route = RouteProp<AppStackParamList, 'TaskDetail'>;
 type ExpandedRow = 'assignee' | 'repeat' | 'when' | 'project' | 'reminder' | null;
 type TimePickerMode = 'start' | 'end';
 
-function formatTimeDisplay(d: Date): string {
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-}
+const formatTimeDisplay = fmtTime;
 
 function makeTodayAt(hour: number): Date {
   const d = new Date();
@@ -58,18 +59,10 @@ function timeToString(t: Date | null): string | null {
   return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}:00`;
 }
 
-const REPEAT_OPTIONS: { label: string; value: string | null }[] = [
-  { label: 'One-off', value: null },
-  { label: 'Every few days', value: 'every_few_days' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
-];
-
-function repeatLabel(value: string | null) {
-  return REPEAT_OPTIONS.find((o) => o.value === value)?.label ?? 'One-off';
-}
+const REPEAT_VALUES: (string | null)[] = [null, 'every_few_days', 'weekly', 'monthly'];
 
 export function TaskDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { taskId } = route.params;
@@ -241,14 +234,24 @@ export function TaskDetailScreen() {
     navigation.goBack();
   }, [taskId, navigation]);
 
+  function repeatLabel(value: string | null): string {
+    if (!value) return t('tasks.repeatOneOff');
+    const map: Record<string, string> = {
+      every_few_days: t('tasks.repeatEveryFewDays'),
+      weekly: t('tasks.repeatWeekly'),
+      monthly: t('tasks.repeatMonthly'),
+    };
+    return map[value] ?? t('tasks.repeatOneOff');
+  }
+
   function handleDelete() {
     Alert.alert(
-      'Delete task',
-      'This cannot be undone.',
+      t('tasks.deleteTitle'),
+      t('common.cannotBeUndone'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             await deleteTask(taskId);
@@ -276,7 +279,7 @@ export function TaskDetailScreen() {
       {/* Back button */}
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <ScaledText style={styles.backLabel}>Tasks</ScaledText>
+        <ScaledText style={styles.backLabel}>{t('tasks.backLabel')}</ScaledText>
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -322,7 +325,7 @@ export function TaskDetailScreen() {
           <View style={styles.dueBadgeRow}>
             {overdue && (
               <View style={styles.overdueBadge}>
-                <ScaledText style={styles.overdueBadgeText}>Overdue</ScaledText>
+                <ScaledText style={styles.overdueBadgeText}>{t('tasks.overdueBadge')}</ScaledText>
               </View>
             )}
             {dueLabel !== '' && (
@@ -335,7 +338,7 @@ export function TaskDetailScreen() {
         <View style={styles.fieldCard}>
           {/* Assignee */}
           <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('assignee')}>
-            <ScaledText style={styles.fieldLabel}>Assignee</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('tasks.assigneeLabel')}</ScaledText>
             <View style={styles.fieldValueRow}>
               <ScaledText style={styles.fieldValue}>{assigneeName}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
@@ -347,7 +350,7 @@ export function TaskDetailScreen() {
                 style={[styles.chip, assignee === null && styles.chipSelected]}
                 onPress={() => changeAssignee(null)}
               >
-                <ScaledText style={[styles.chipLabel, assignee === null && styles.chipLabelSelected]}>Unassigned</ScaledText>
+                <ScaledText style={[styles.chipLabel, assignee === null && styles.chipLabelSelected]}>{t('tasks.unassigned')}</ScaledText>
               </TouchableOpacity>
               {members.map((m) => {
                 const selected = assignee?.type === 'user' && assignee.id === m.user_id;
@@ -388,7 +391,7 @@ export function TaskDetailScreen() {
 
           {/* Repeat */}
           <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('repeat')}>
-            <ScaledText style={styles.fieldLabel}>Repeat</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('tasks.repeatLabel')}</ScaledText>
             <View style={styles.fieldValueRow}>
               <ScaledText style={styles.fieldValue}>{repeatLabel(repeat)}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
@@ -396,14 +399,14 @@ export function TaskDetailScreen() {
           </TouchableOpacity>
           {expandedRow === 'repeat' && (
             <View style={styles.chipRow}>
-              {REPEAT_OPTIONS.map((opt) => (
+              {REPEAT_VALUES.map((value) => (
                 <TouchableOpacity
-                  key={String(opt.value)}
-                  style={[styles.chip, repeat === opt.value && styles.chipSelected]}
-                  onPress={() => changeRepeat(opt.value)}
+                  key={String(value)}
+                  style={[styles.chip, repeat === value && styles.chipSelected]}
+                  onPress={() => changeRepeat(value)}
                 >
-                  <ScaledText style={[styles.chipLabel, repeat === opt.value && styles.chipLabelSelected]}>
-                    {opt.label}
+                  <ScaledText style={[styles.chipLabel, repeat === value && styles.chipLabelSelected]}>
+                    {repeatLabel(value)}
                   </ScaledText>
                 </TouchableOpacity>
               ))}
@@ -413,9 +416,9 @@ export function TaskDetailScreen() {
 
           {/* When */}
           <TouchableOpacity style={styles.fieldRow} onPress={handleWhenPress}>
-            <ScaledText style={styles.fieldLabel}>When</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('tasks.whenLabel')}</ScaledText>
             <View style={styles.fieldValueRow}>
-              <ScaledText style={styles.fieldValue}>{dueDate ? formatDueLabel(toLocalISODate(dueDate)) : 'No date'}</ScaledText>
+              <ScaledText style={styles.fieldValue}>{dueDate ? formatDueLabel(toLocalISODate(dueDate)) : t('tasks.noDate')}</ScaledText>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
             </View>
           </TouchableOpacity>
@@ -455,7 +458,7 @@ export function TaskDetailScreen() {
           )}
           {dueDate !== null && (
             <TouchableOpacity style={styles.clearDateRow} onPress={handleClearDate}>
-              <ScaledText style={styles.clearDateLabel}>Remove date</ScaledText>
+              <ScaledText style={styles.clearDateLabel}>{t('tasks.removeDate')}</ScaledText>
             </TouchableOpacity>
           )}
           <View style={styles.rowDivider} />
@@ -475,7 +478,7 @@ export function TaskDetailScreen() {
 
           {/* Visibility */}
           <View style={styles.fieldRow}>
-            <ScaledText style={styles.fieldLabel}>Only me</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('tasks.onlyMe')}</ScaledText>
             <Switch
               value={visibility === 'private'}
               onValueChange={changeVisibility}
@@ -489,10 +492,10 @@ export function TaskDetailScreen() {
             <>
               <View style={styles.rowDivider} />
               <TouchableOpacity style={styles.fieldRow} onPress={() => toggleRow('project')}>
-                <ScaledText style={styles.fieldLabel}>Project</ScaledText>
+                <ScaledText style={styles.fieldLabel}>{t('tasks.projectLabel')}</ScaledText>
                 <View style={styles.fieldValueRow}>
                   <ScaledText style={styles.fieldValue}>
-                    {projectId ? (projects.find((p) => p.id === projectId)?.title ?? 'None') : 'None'}
+                    {projectId ? (projects.find((p) => p.id === projectId)?.title ?? t('common.none')) : t('common.none')}
                   </ScaledText>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
                 </View>
@@ -503,7 +506,7 @@ export function TaskDetailScreen() {
                     style={[styles.chip, projectId === null && styles.chipSelected]}
                     onPress={() => changeProject(null)}
                   >
-                    <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>None</ScaledText>
+                    <ScaledText style={[styles.chipLabel, projectId === null && styles.chipLabelSelected]}>{t('common.none')}</ScaledText>
                   </TouchableOpacity>
                   {projects.map((proj) => (
                     <TouchableOpacity
@@ -526,7 +529,7 @@ export function TaskDetailScreen() {
                 >
                   <Ionicons name="folder-outline" size={14} color={theme.colors.sageDark} />
                   <ScaledText style={styles.projectLinkLabel}>
-                    View project
+                    {t('tasks.viewProject')}
                   </ScaledText>
                 </TouchableOpacity>
               )}
@@ -535,13 +538,13 @@ export function TaskDetailScreen() {
         </View>
 
         {/* Progress note */}
-        <ScaledText style={styles.sectionHeader}>Progress &amp; updates</ScaledText>
+        <ScaledText style={styles.sectionHeader}>{t('tasks.progressSection')}</ScaledText>
         <View style={styles.noteCard}>
           <TextInput
             style={styles.noteInput}
             value={noteText}
             onChangeText={(t) => { setNoteText(t); setNoteChanged(true); }}
-            placeholder="Add an update…"
+            placeholder={t('tasks.progressPlaceholder')}
             placeholderTextColor={theme.colors.textFaint}
             multiline
             textAlignVertical="top"
@@ -555,7 +558,7 @@ export function TaskDetailScreen() {
           >
             {savingNote
               ? <ActivityIndicator color={theme.colors.surface} size="small" />
-              : <ScaledText style={styles.saveNoteLabel}>Save note</ScaledText>
+              : <ScaledText style={styles.saveNoteLabel}>{t('tasks.saveNote')}</ScaledText>
             }
           </TouchableOpacity>
         )}
@@ -566,11 +569,11 @@ export function TaskDetailScreen() {
           onPress={() => navigation.navigate('AddAppointment', { taskId })}
         >
           <Ionicons name="calendar-outline" size={18} color={theme.colors.sageDark} />
-          <ScaledText style={styles.appointmentLabel}>Make an appointment</ScaledText>
+          <ScaledText style={styles.appointmentLabel}>{t('tasks.makeAppointment')}</ScaledText>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <ScaledText style={styles.deleteLabel}>Delete task</ScaledText>
+          <ScaledText style={styles.deleteLabel}>{t('tasks.deleteButton')}</ScaledText>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -12,6 +12,9 @@ import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+
+import { fmtWeekdayDate, fmtTime } from '../../utils/formatters';
 import { theme } from '../../constants/theme';
 import { useCircle } from '../../hooks/useCircle';
 import { useExternalContacts } from '../../hooks/useExternalContacts';
@@ -25,41 +28,9 @@ import { AppStackParamList } from '../../navigation/types';
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'AppointmentDetail'>;
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-}
-
-function formatWhen(startsAt: string, endsAt: string | null, isFullDay: boolean): string {
-  if (isFullDay) return `${formatDate(startsAt)} · All day`;
-  const timeRange = endsAt ? `${formatTime(startsAt)} – ${formatTime(endsAt)}` : formatTime(startsAt);
-  return `${formatDate(startsAt)} · ${timeRange}`;
-}
-
-function formatRecurrence(recurrence: string | null): string {
-  const labels: Record<string, string> = {
-    daily: 'Every day',
-    weekly: 'Every week',
-    monthly: 'Every month',
-    yearly: 'Every year',
-  };
-  return recurrence ? (labels[recurrence] ?? recurrence) : 'None';
-}
-
-function formatReminder(minutes: number | null): string {
-  if (minutes === null) return 'None';
-  if (minutes === 0) return 'At start';
-  if (minutes < 60) return `${minutes} minutes before`;
-  if (minutes === 60) return '1 hour before';
-  if (minutes < 1440) return `${minutes / 60} hours before`;
-  if (minutes === 1440) return '1 day before';
-  return `${minutes / 1440} days before`;
-}
 
 export function AppointmentDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { appointmentId } = route.params;
@@ -96,11 +67,38 @@ export function AppointmentDetailScreen() {
     refresh();
   }
 
+  function formatWhen(startsAt: string, endsAt: string | null, isFullDay: boolean): string {
+    if (isFullDay) return `${fmtWeekdayDate(startsAt)} · ${t('appointments.allDay')}`;
+    const timeRange = endsAt ? `${fmtTime(startsAt)} – ${fmtTime(endsAt)}` : fmtTime(startsAt);
+    return `${fmtWeekdayDate(startsAt)} · ${timeRange}`;
+  }
+
+  function formatRecurrence(recurrence: string | null): string {
+    if (!recurrence) return t('common.none');
+    const map: Record<string, string> = {
+      daily: t('appointments.recurrenceDaily'),
+      weekly: t('appointments.recurrenceWeekly'),
+      monthly: t('appointments.recurrenceMonthly'),
+      yearly: t('appointments.recurrenceYearly'),
+    };
+    return map[recurrence] ?? recurrence;
+  }
+
+  function formatReminder(minutes: number | null): string {
+    if (minutes === null) return t('appointments.reminderNone');
+    if (minutes === 0) return t('appointments.reminderAtStart');
+    if (minutes < 60) return t('appointments.reminderMinutesBefore', { count: minutes });
+    if (minutes === 60) return t('appointments.reminderHourBefore');
+    if (minutes < 1440) return t('appointments.reminderHoursBefore', { count: minutes / 60 });
+    if (minutes === 1440) return t('appointments.reminderDayBefore');
+    return t('appointments.reminderDaysBefore', { count: minutes / 1440 });
+  }
+
   function handleDelete() {
-    Alert.alert('Delete appointment', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('appointments.deleteTitle'), t('common.cannotBeUndone'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: async () => {
           await deleteAppointment(appointmentId);
           navigation.goBack();
@@ -121,7 +119,7 @@ export function AppointmentDetailScreen() {
       <View style={styles.navRow}>
         <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-          <ScaledText style={styles.backLabel}>Back</ScaledText>
+          <ScaledText style={styles.backLabel}>{t('common.back')}</ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.editButton}
@@ -157,48 +155,48 @@ export function AppointmentDetailScreen() {
                 </View>
               ))}
               <ScaledText style={styles.fieldValue}>
-                {allInvitees.length > 0 ? allInvitees.map((i) => i.name).join(', ') : 'Nobody'}
+                {allInvitees.length > 0 ? allInvitees.map((i) => i.name).join(', ') : t('appointments.nobody')}
               </ScaledText>
             </View>
           </View>
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
-            <ScaledText style={styles.fieldLabel}>Location</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('appointments.locationLabel')}</ScaledText>
             <ScaledText style={[styles.fieldValue, !appointment.location && styles.fieldValueMuted]} numberOfLines={2}>
-              {appointment.location ?? 'None'}
+              {appointment.location ?? t('common.none')}
             </ScaledText>
           </View>
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
-            <ScaledText style={styles.fieldLabel}>Repeat</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('appointments.repeatLabel')}</ScaledText>
             <ScaledText style={[styles.fieldValue, !appointment.recurrence && styles.fieldValueMuted]}>
               {recurrenceLabel}
             </ScaledText>
           </View>
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
-            <ScaledText style={styles.fieldLabel}>Reminder</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('appointments.reminderLabel')}</ScaledText>
             <ScaledText style={[styles.fieldValue, appointment.reminder_offset_minutes === null && styles.fieldValueMuted]}>
               {reminderLabel}
             </ScaledText>
           </View>
           <View style={styles.rowDivider} />
           <View style={styles.fieldRow}>
-            <ScaledText style={styles.fieldLabel}>Visibility</ScaledText>
+            <ScaledText style={styles.fieldLabel}>{t('appointments.visibilityLabel')}</ScaledText>
             <ScaledText style={styles.fieldValue}>
-              {appointment.visibility === 'private' ? 'Only me' : 'Shared'}
+              {appointment.visibility === 'private' ? t('tasks.onlyMe') : t('common.shared')}
             </ScaledText>
           </View>
           {projects.length > 0 && (
             <>
               <View style={styles.rowDivider} />
               <TouchableOpacity style={styles.fieldRow} onPress={() => setProjectPickerOpen((v) => !v)}>
-                <ScaledText style={styles.fieldLabel}>Project</ScaledText>
+                <ScaledText style={styles.fieldLabel}>{t('tasks.projectLabel')}</ScaledText>
                 <View style={styles.fieldValueRow}>
                   <ScaledText style={styles.fieldValue}>
                     {appointment.project_id
-                      ? (projects.find((p) => p.id === appointment.project_id)?.title ?? 'None')
-                      : 'None'}
+                      ? (projects.find((p) => p.id === appointment.project_id)?.title ?? t('common.none'))
+                      : t('common.none')}
                   </ScaledText>
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
                 </View>
@@ -209,7 +207,7 @@ export function AppointmentDetailScreen() {
                     style={[styles.chip, !appointment.project_id && styles.chipSelected]}
                     onPress={() => handleChangeProject(null)}
                   >
-                    <ScaledText style={[styles.chipLabel, !appointment.project_id && styles.chipLabelSelected]}>None</ScaledText>
+                    <ScaledText style={[styles.chipLabel, !appointment.project_id && styles.chipLabelSelected]}>{t('common.none')}</ScaledText>
                   </TouchableOpacity>
                   {projects.map((proj) => (
                     <TouchableOpacity
@@ -230,7 +228,7 @@ export function AppointmentDetailScreen() {
                   onPress={() => navigation.navigate('ProjectDetail', { projectId: appointment.project_id! })}
                 >
                   <Ionicons name="folder-outline" size={14} color={theme.colors.sageDark} />
-                  <ScaledText style={styles.projectLinkLabel}>View project</ScaledText>
+                  <ScaledText style={styles.projectLinkLabel}>{t('tasks.viewProject')}</ScaledText>
                 </TouchableOpacity>
               )}
             </>
@@ -238,9 +236,9 @@ export function AppointmentDetailScreen() {
         </View>
 
         <View style={styles.sectionHeaderRow}>
-          <ScaledText style={styles.sectionHeader}>Prep tasks</ScaledText>
+          <ScaledText style={styles.sectionHeader}>{t('appointments.prepTasksSection')}</ScaledText>
           {prepTasks.length > 0 && (
-            <ScaledText style={styles.prepCount}>{completedCount} of {prepTasks.length} ready</ScaledText>
+            <ScaledText style={styles.prepCount}>{t('appointments.prepCount', { completed: completedCount, total: prepTasks.length })}</ScaledText>
           )}
         </View>
 
@@ -270,12 +268,12 @@ export function AppointmentDetailScreen() {
             onPress={() => navigation.navigate('AddTask', { parentAppointmentId: appointmentId })}
           >
             <Ionicons name="add-circle-outline" size={20} color={theme.colors.sage} />
-            <ScaledText style={styles.addPrepLabel}>Add a prep task</ScaledText>
+            <ScaledText style={styles.addPrepLabel}>{t('appointments.addPrepTaskButton')}</ScaledText>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <ScaledText style={styles.deleteLabel}>Delete appointment</ScaledText>
+          <ScaledText style={styles.deleteLabel}>{t('appointments.deleteButton')}</ScaledText>
         </TouchableOpacity>
       </ScrollView>
     </View>

@@ -6,106 +6,36 @@
 
 ## Current Status
 
-i18n design (F9 — German/English language support) is fully agreed and documented in `docs/designs/design-i18n.md`. Implementation starts next, milestone by milestone.
+i18n (F9) is nearly complete. M1–M8 are done. M7 (settings screens) is the only remaining milestone. M9 and M10 (push notifications and email) are deferred post-MVP.
 
-Vacation & collapsible calendar design is complete (`docs/designs/design-vacation-calendar.md`) and deferred — implement after i18n is done.
-
-At the start of the implementation session, convert the checklist below to todos and mark each item done as you complete it.
+Vacation & collapsible calendar features are fully implemented (screens, hooks, service, calendar rendering). Just needs i18n strings (covered by M7 if applicable).
 
 ---
 
-## Implementation Plan — i18n (F9)
+## What Was Done Last Session
 
-### M1 — Database & types
-- [ ] Add `language text NOT NULL DEFAULT 'de'` column to `user_profile` (migration)
-- [ ] Apply migration via `supabase db push`
-- [ ] Regenerate TypeScript types
+**Completed the remaining i18n string work across all core screens:**
 
-### M2 — i18next setup
-- [ ] Install `i18next` and `react-i18next`
-- [ ] Create `src/i18n/de.json` and `src/i18n/en.json` with placeholder structure
-- [ ] Create `src/i18n/index.ts` — initialise i18next with both locales, bundled (no backend)
-- [ ] Wrap app root in `I18nextProvider`
-- [ ] Create `src/hooks/useLanguage.ts` — exposes current language and `setLanguage(lang)` that updates both i18next and `user_profile`
+- **`ReminderPicker.tsx`** — fully translated: "Remind me", "Set a time first", "None", "Custom", "Done", all 5 preset chip labels (using existing `appointments.reminderXxx` keys), unit dropdown labels. Replaced hardcoded `PRESETS` array with `PRESET_MINUTES` (numbers only). `formatReminder` and `presetLabel` now live inside component using `t()`. `unitLabels` record maps unit key → translated label.
+- **`DayDetailScreen.tsx`** — "Nothing on this day", "On vacation", "With:" prefix, "Appointments", "Tasks due"
+- **`AddVacationScreen.tsx` / `EditVacationScreen.tsx`** — headings, title placeholder, "From"/"Until", "With", "Nobody", person count (pluralised), save buttons
+- **`CalendarScreen.tsx`** — screen title "Calendar", "Expand"/"Collapse" toggle, "Nothing on this day", "Appointment"/"Vacation" FAB labels, day-letter headers (now reads from `calendar.dayLetters`). Added `LocaleConfig` setup via `useEffect` so `react-native-calendars` Calendar component uses correct month/day names in DE and EN.
+- **`en.json` / `de.json`** — 22 new keys added to `appointments` and `calendar` namespaces.
 
-### M3 — Language picker screen (onboarding)
-- [ ] Create `src/screens/auth/LanguagePickerScreen.tsx` — two options (Deutsch / English), pre-selects from device locale
-- [ ] On selection: store to AsyncStorage, update i18next immediately
-- [ ] Add `LanguagePicker` to `AuthStackParamList` and `AuthNavigator` as the first route
-- [ ] On auth completion: sync AsyncStorage language to `user_profile.language`
-- [ ] Returning user path: skip picker, load `language` from `user_profile` and apply at login
-
-### M4 — Language in Settings
-- [ ] Add language selector row to `UserSettingsScreen`
-- [ ] On change: call `setLanguage()` — instant re-render, saves to `user_profile`
-
-### M5 — Translate auth screens
-- [ ] `LanguagePickerScreen` strings in both locales
-- [ ] `EnterEmailScreen` — label, placeholder, button, OTP instructions
-- [ ] `OTPScreen` (or equivalent)
-- [ ] `InviteManagementScreen`, `SelectCircleScreen`
-
-### M6 — Translate core app screens
-- [ ] `TaskListScreen` — section headers, empty state, FAB label
-- [ ] `AddTaskScreen` — labels, placeholders, buttons, validation messages
-- [ ] `TaskDetailScreen` — field labels, status values, actions
-- [ ] `AddAppointmentScreen`, `AppointmentDetailScreen`
-- [ ] `CalendarScreen` — month/day names, headers
-- [ ] `ProjectsScreen`, `ProjectDetailScreen`
-
-### M7 — Translate settings screens
-- [ ] `UserSettingsScreen`, `CircleAdminScreen`
-- [ ] `CreateCircleScreen`, `JoinCircleScreen`
-
-### M8 — Date, time, and number formatting
-- [ ] Create `src/utils/formatters.ts` — `formatDate`, `formatTime`, `formatNumber` using active locale
-- [ ] Both locales: DD.MM.YYYY dates, 24h time
-- [ ] German: comma decimal / period thousands; English: period decimal / comma thousands
-- [ ] Replace all raw date/number display strings across screens with formatter calls
-
-### M9 — Push notifications
-- [ ] Update reminder notification logic to look up `user_profile.language` before composing text
-- [ ] Add German and English variants for all existing notification types
-
-### M10 — Magic link email (last)
-- [ ] Update Resend email template/function to look up `user_profile.language`
-- [ ] German and English body/subject variants
-- [ ] Fall back to German when language is null
+TypeScript check passed clean after all edits.
 
 ---
 
-## Deferred: Vacation & Collapsible Calendar
+## Next: M7 — Translate Settings Screens
 
-Design is complete in `docs/designs/design-vacation-calendar.md`. Implementation plan preserved below for when i18n is done.
+The following screens still have hardcoded English strings:
 
-### Phase 1 — Database & types
-- [ ] Create `vacation` table (id, circle_id, user_id, title, start_date, end_date, with_member_ids uuid[], created_at)
-- [ ] Add RLS: all circle members can read; only owner can insert/update/delete
-- [ ] Run `supabase db push` and regenerate TypeScript types
+- **`UserSettingsScreen.tsx`** — profile section, language selector, circle list, sign-out
+- **`CircleAdminScreen.tsx`** — member list, invite code, copy/share, remove member confirm — check if already translated (circleAdmin namespace exists in JSON)
+- **`AddEditExternalContactScreen.tsx`** (new, untracked) — "Save changes" / "Add contact" on line 186, likely other strings
+- Any remaining auth screens if not already done
 
-### Phase 2 — Service & hook
-- [ ] Create `services/vacations.ts` — getVacationsForCircle, createVacation, updateVacation, deleteVacation
-- [ ] Create `hooks/useVacations.ts` — fetches, realtime subscription, clean up on unmount
-
-### Phase 3 — Add Vacation screen
-- [ ] Create `screens/app/AddVacationScreen.tsx`
-- [ ] Add to `AppStackParamList` and `AppNavigator`
-
-### Phase 4 — Collapsible calendar
-- [ ] Expand/collapse state + swipe gestures
-- [ ] Collapsed: mini-month grid, colored dots, bottom day-event panel
-- [ ] Expanded: taller cells, up to 3 items, +X overflow badge
-
-### Phase 5 — Day Detail modal
-- [ ] Create `screens/app/DayDetailScreen.tsx` — modal, view-only
-
-### Phase 6 — Vacation rendering in calendar
-- [ ] Collapsed: red dot per vacation day
-- [ ] Expanded: full-width red fill, title in first cell only
-
-### Phase 7 — Vacation assignment warning
-- [ ] AddTaskScreen: warn if assignee is on vacation on due date
-- [ ] AddAppointmentScreen: same check
+Also worth checking at runtime: **"Invalid date"** was reported by the user on the task screen. It's not a hardcoded string — it's JS `Date.toLocaleDateString()` output on an invalid Date object. Likely triggered by a formatter being called with a null/undefined input that isn't guarded. Trace it during testing.
 
 ---
 

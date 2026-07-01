@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +31,7 @@ type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Filter = 'all' | 'done';
 
 export function TaskListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { session } = useAuth();
   const currentUserId = session?.user.id ?? '';
@@ -115,10 +117,16 @@ export function TaskListScreen() {
 
   function renderSectionHeader({ section }: { section: OverviewSection }) {
     const isToday = section.key === 'today';
+    const sectionTitleMap: Record<OverviewSection['key'], string> = {
+      today: t('tasks.sectionToday'),
+      thisWeek: t('tasks.sectionThisWeek'),
+      later: t('tasks.sectionLater'),
+      done: t('tasks.sectionCompleted'),
+    };
     return (
       <View style={styles.sectionHeader}>
         <ScaledText style={[styles.sectionTitle, isToday && styles.sectionTitleToday]}>
-          {section.title}
+          {sectionTitleMap[section.key]}
         </ScaledText>
         <ScaledText style={[styles.sectionCount, isToday && styles.sectionCountToday]}>
           {section.count}
@@ -137,9 +145,10 @@ export function TaskListScreen() {
     };
 
     const confirmDelete = () => {
-      Alert.alert(`Delete ${item.kind}`, 'This cannot be undone.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: deleteItem },
+      const title = item.kind === 'task' ? t('tasks.deleteTitle') : t('appointments.deleteTitle');
+      Alert.alert(title, t('common.cannotBeUndone'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: deleteItem },
       ]);
     };
 
@@ -155,38 +164,38 @@ export function TaskListScreen() {
 
     const showProjectPicker = () => {
       if (activeProjects.length === 0) {
-        Alert.alert('No projects', 'Create a project first, then link items to it.');
+        Alert.alert(t('tasks.noActiveProjects'), t('tasks.noActiveProjectsBody'));
         return;
       }
       Alert.alert(
-        'Add to project',
+        t('tasks.addToProject'),
         undefined,
         [
           ...activeProjects.map((p) => ({ text: p.title, onPress: () => linkToProject(p.id) })),
-          { text: 'Cancel', style: 'cancel' as const },
+          { text: t('common.cancel'), style: 'cancel' as const },
         ],
       );
     };
 
     const items: DropdownMenuItem[] = [];
     if (hasProject) {
-      items.push({ label: 'Change project', onPress: showProjectPicker });
-      items.push({ label: 'Remove from project', onPress: unlinkProject });
+      items.push({ label: t('tasks.changeProject'), onPress: showProjectPicker });
+      items.push({ label: t('tasks.removeFromProject'), onPress: unlinkProject });
     } else {
-      items.push({ label: 'Add to project', onPress: showProjectPicker });
+      items.push({ label: t('tasks.addToProject'), onPress: showProjectPicker });
     }
-    items.push({ label: 'Delete', destructive: true, onPress: confirmDelete });
+    items.push({ label: t('common.delete'), destructive: true, onPress: confirmDelete });
     return items;
   }
 
   function handleUncheck(taskId: string) {
     Alert.alert(
-      'Re-open task?',
-      'This will move it back to your active list.',
+      t('tasks.reopenTitle'),
+      t('tasks.reopenBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Re-open',
+          text: t('tasks.reopen'),
           onPress: async () => {
             await uncompleteTask(taskId);
             refresh();
@@ -219,7 +228,7 @@ export function TaskListScreen() {
     );
   }
 
-  const emptyText = filter === 'done' ? 'No completed tasks yet.' : 'Nothing coming up.';
+  const emptyText = filter === 'done' ? t('tasks.emptyDone') : t('tasks.emptyUpcoming');
 
   return (
     <View style={styles.container}>
@@ -227,7 +236,7 @@ export function TaskListScreen() {
       <View style={styles.header}>
         <View>
           <ScaledText style={styles.circleName}>{circle?.name ?? 'Care Circle'}</ScaledText>
-          <ScaledText style={styles.screenTitle}>Overview</ScaledText>
+          <ScaledText style={styles.screenTitle}>{t('tasks.overviewTitle')}</ScaledText>
         </View>
         <TouchableOpacity
           style={styles.headerAvatar}
@@ -247,7 +256,7 @@ export function TaskListScreen() {
               onPress={() => { setFilter(f); setMineActive(false); }}
             >
               <ScaledText style={[styles.segmentLabel, filter === f && styles.segmentLabelActive]}>
-                {f === 'all' ? 'Upcoming' : 'Done'}
+                {f === 'all' ? t('tasks.segmentUpcoming') : t('tasks.segmentDone')}
               </ScaledText>
             </TouchableOpacity>
           ))}
@@ -276,7 +285,7 @@ export function TaskListScreen() {
               hitSlop={8}
             >
               <ScaledText style={[styles.mineBtnLabel, mineActive && styles.mineBtnLabelActive]}>
-                Mine
+                {t('tasks.filterMine')}
               </ScaledText>
             </TouchableOpacity>
 
@@ -298,7 +307,7 @@ export function TaskListScreen() {
                   ))}
                 </View>
                 <TouchableOpacity onPress={() => setFilterProjectIds([])} hitSlop={8}>
-                  <ScaledText style={styles.clearAllLabel}>Clear</ScaledText>
+                  <ScaledText style={styles.clearAllLabel}>{t('common.clear')}</ScaledText>
                 </TouchableOpacity>
               </>
             )}
@@ -307,7 +316,7 @@ export function TaskListScreen() {
           {filterDropdownOpen && (
             <View style={styles.filterDropdown}>
               {activeProjects.length === 0 ? (
-                <ScaledText style={styles.filterDropdownEmpty}>No active projects</ScaledText>
+                <ScaledText style={styles.filterDropdownEmpty}>{t('tasks.noActiveProjects')}</ScaledText>
               ) : (
                 activeProjects.map((proj) => {
                   const selected = filterProjectIds.includes(proj.id);
@@ -343,7 +352,7 @@ export function TaskListScreen() {
       ) : filteredSections.length === 0 ? (
         <View style={styles.centered}>
           <ScaledText style={styles.emptyText}>
-            {isAnyFilterActive ? 'Nothing matches your filter.' : emptyText}
+            {isAnyFilterActive ? t('tasks.emptyFiltered') : emptyText}
           </ScaledText>
         </View>
       ) : (
@@ -379,7 +388,7 @@ export function TaskListScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} />
             </View>
-            <ScaledText style={styles.fabMenuLabel}>Appointment</ScaledText>
+            <ScaledText style={styles.fabMenuLabel}>{t('tasks.fabAppointment')}</ScaledText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -390,7 +399,7 @@ export function TaskListScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.sage} />
             </View>
-            <ScaledText style={styles.fabMenuLabel}>Task</ScaledText>
+            <ScaledText style={styles.fabMenuLabel}>{t('tasks.fabTask')}</ScaledText>
           </TouchableOpacity>
         </View>
       )}

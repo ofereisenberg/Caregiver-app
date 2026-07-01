@@ -15,6 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+import { fmtWeekdayDate, fmtTime, fmtShortDate, fmtWeekday } from '../../utils/formatters';
+
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
@@ -32,12 +35,6 @@ type Route = RouteProp<AppStackParamList, 'ProjectDetail'>;
 
 type ActiveTab = 'active' | 'notes' | 'past';
 
-const STATUS_LABEL: Record<string, string> = {
-  not_started: 'Not started',
-  in_progress: 'In progress',
-  done: 'Done',
-};
-
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   not_started: { bg: theme.colors.disabledBg, fg: theme.colors.textMuted },
   in_progress: { bg: theme.colors.sageTint, fg: theme.colors.sageDark },
@@ -48,44 +45,51 @@ type ChildItem =
   | { kind: 'task'; data: Task }
   | { kind: 'appointment'; data: Appointment };
 
-function formatApptTime(appt: Appointment): string {
-  const start = new Date(appt.starts_at);
-  const dateStr = start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  if (appt.is_full_day) return `${dateStr} · All day`;
-  const startTime = start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (!appt.ends_at) return `${dateStr} · ${startTime}`;
-  const endTime = new Date(appt.ends_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${dateStr} · ${startTime} – ${endTime}`;
-}
-
 function formatDue(dateStr: string | null): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-}
-
-function formatNoteTime(isoStr: string): string {
-  const d = new Date(isoStr);
-  const now = new Date();
-  const isToday =
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear();
-  const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (isToday) return `Today · ${timeStr}`;
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays < 7) {
-    return `${d.toLocaleDateString(undefined, { weekday: 'short' })} · ${timeStr}`;
-  }
-  return `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${timeStr}`;
+  return fmtShortDate(dateStr.slice(0, 10) + 'T00:00:00');
 }
 
 export function ProjectDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { projectId } = route.params;
 
   const { session } = useAuth();
+
+  function statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      not_started: t('projects.statusNotStarted'),
+      in_progress: t('projects.statusInProgress'),
+      done: t('projects.statusDone'),
+    };
+    return map[status] ?? status;
+  }
+
+  function formatApptTime(appt: Appointment): string {
+    const dateStr = fmtWeekdayDate(appt.starts_at);
+    if (appt.is_full_day) return `${dateStr} · ${t('appointments.allDay')}`;
+    const startTime = fmtTime(appt.starts_at);
+    if (!appt.ends_at) return `${dateStr} · ${startTime}`;
+    return `${dateStr} · ${startTime} – ${fmtTime(appt.ends_at)}`;
+  }
+
+  function formatNoteTime(isoStr: string): string {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const isToday =
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear();
+    const timeStr = fmtTime(d);
+    if (isToday) return `${t('projects.noteTimeToday')} · ${timeStr}`;
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+    if (diffDays < 7) {
+      return `${fmtWeekday(d)} · ${timeStr}`;
+    }
+    return `${fmtShortDate(d)} · ${timeStr}`;
+  }
   const { circle, members } = useCircle();
   const { project, loading, refresh, handleCompleteTask } = useProject(projectId);
   const { notes, addNote, editNote, removeNote } = useProjectNotes(
@@ -109,19 +113,19 @@ export function ProjectDetailScreen() {
 
   function handleDelete() {
     Alert.alert(
-      'Delete project',
-      'Do you want to delete just the project, or the project and all its tasks and appointments?',
+      t('projects.deleteTitle'),
+      t('projects.deleteMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Keep items',
+          text: t('projects.deleteKeepItems'),
           onPress: async () => {
             await deleteProject(projectId);
             navigation.goBack();
           },
         },
         {
-          text: 'Delete all',
+          text: t('projects.deleteAll'),
           style: 'destructive',
           onPress: async () => {
             await deleteProjectAndItems(projectId);
@@ -133,19 +137,19 @@ export function ProjectDetailScreen() {
   }
 
   function handleChangeStatus() {
-    const allStatuses: Array<{ key: 'not_started' | 'in_progress' | 'done'; label: string }> = [
-      { key: 'not_started', label: 'Not started' },
-      { key: 'in_progress', label: 'In progress' },
-      { key: 'done', label: 'Done' },
+    const allStatuses: Array<{ key: 'not_started' | 'in_progress' | 'done' }> = [
+      { key: 'not_started' },
+      { key: 'in_progress' },
+      { key: 'done' },
     ];
     const options = allStatuses.filter((s) => s.key !== project?.status);
     Alert.alert(
-      'Change status',
-      `Current: ${STATUS_LABEL[project?.status ?? ''] ?? project?.status}`,
+      t('projects.changeStatusTitle'),
+      t('projects.changeStatusCurrent', { status: statusLabel(project?.status ?? '') }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         ...options.map((s) => ({
-          text: s.label,
+          text: statusLabel(s.key),
           onPress: async () => {
             await updateProject(projectId, { status: s.key });
             refresh();
@@ -166,27 +170,27 @@ export function ProjectDetailScreen() {
 
   function handleLongPressNote(note: ProjectNote) {
     if (note.created_by !== session?.user.id) return;
-    Alert.alert('Note', undefined, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('projects.noteOptions'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Edit',
+        text: t('common.edit'),
         onPress: () => {
           setEditText(note.content);
           setEditingNoteId(note.id);
         },
       },
-      { text: 'Delete', style: 'destructive', onPress: () => removeNote(note.id) },
+      { text: t('common.delete'), style: 'destructive', onPress: () => removeNote(note.id) },
     ]);
   }
 
   function handleUncompleteTask(taskId: string) {
     Alert.alert(
-      'Re-open task?',
-      'This will move it back to the Active tab.',
+      t('tasks.reopenTitle'),
+      t('projects.reopenBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Re-open',
+          text: t('tasks.reopen'),
           onPress: async () => {
             await uncompleteTask(taskId);
             if (project?.status === 'done') {
@@ -273,7 +277,7 @@ export function ProjectDetailScreen() {
             {task.title}
           </ScaledText>
           {task.due_date && (
-            <ScaledText style={styles.itemMeta}>Due {formatDue(task.due_date)}</ScaledText>
+            <ScaledText style={styles.itemMeta}>{t('projects.duePrefix', { date: formatDue(task.due_date) })}</ScaledText>
           )}
         </View>
         {task.assignee && (
@@ -318,7 +322,7 @@ export function ProjectDetailScreen() {
             />
             <View style={styles.noteEditActions}>
               <TouchableOpacity onPress={() => setEditingNoteId(null)} hitSlop={8}>
-                <ScaledText style={styles.noteEditCancel}>Cancel</ScaledText>
+                <ScaledText style={styles.noteEditCancel}>{t('common.cancel')}</ScaledText>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={async () => {
@@ -334,7 +338,7 @@ export function ProjectDetailScreen() {
               >
                 {savingEdit
                   ? <ActivityIndicator size="small" color={theme.colors.sage} />
-                  : <ScaledText style={styles.noteEditSave}>Save</ScaledText>
+                  : <ScaledText style={styles.noteEditSave}>{t('common.save')}</ScaledText>
                 }
               </TouchableOpacity>
             </View>
@@ -369,7 +373,7 @@ export function ProjectDetailScreen() {
       {/* Back */}
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.sage} />
-        <ScaledText style={styles.backLabel}>Projects</ScaledText>
+        <ScaledText style={styles.backLabel}>{t('projects.backLabel')}</ScaledText>
       </TouchableOpacity>
 
       {/* Project header */}
@@ -383,11 +387,11 @@ export function ProjectDetailScreen() {
             activeOpacity={0.7}
           >
             <ScaledText style={[styles.statusBadgeText, { color: colors.fg }]}>
-              {STATUS_LABEL[project.status] ?? project.status}
+              {statusLabel(project.status)}
             </ScaledText>
           </TouchableOpacity>
           {ownerName && <ScaledText style={styles.metaText}>{ownerName}</ScaledText>}
-          {dueStr && <ScaledText style={styles.metaText}>Due {dueStr}</ScaledText>}
+          {dueStr && <ScaledText style={styles.metaText}>{t('projects.duePrefix', { date: dueStr })}</ScaledText>}
         </View>
 
         {project.description ? (
@@ -402,7 +406,7 @@ export function ProjectDetailScreen() {
           onPress={() => setActiveTab('active')}
         >
           <ScaledText style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
-            Active {activeItems.length > 0 ? `(${activeItems.length})` : ''}
+            {activeItems.length > 0 ? `${t('projects.tabActive')} (${activeItems.length})` : t('projects.tabActive')}
           </ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
@@ -410,7 +414,7 @@ export function ProjectDetailScreen() {
           onPress={() => setActiveTab('notes')}
         >
           <ScaledText style={[styles.tabLabel, activeTab === 'notes' && styles.tabLabelActive]}>
-            Notes {notes.length > 0 ? `(${notes.length})` : ''}
+            {notes.length > 0 ? `${t('projects.tabNotes')} (${notes.length})` : t('projects.tabNotes')}
           </ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
@@ -418,7 +422,7 @@ export function ProjectDetailScreen() {
           onPress={() => setActiveTab('past')}
         >
           <ScaledText style={[styles.tabLabel, activeTab === 'past' && styles.tabLabelActive]}>
-            Past {pastItems.length > 0 ? `(${pastItems.length})` : ''}
+            {pastItems.length > 0 ? `${t('projects.tabPast')} (${pastItems.length})` : t('projects.tabPast')}
           </ScaledText>
         </TouchableOpacity>
       </View>
@@ -432,7 +436,7 @@ export function ProjectDetailScreen() {
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <ScaledText style={styles.emptyText}>No notes yet — add one below</ScaledText>
+                <ScaledText style={styles.emptyText}>{t('projects.emptyNotes')}</ScaledText>
               </View>
             }
             contentContainerStyle={styles.notesListContent}
@@ -442,7 +446,7 @@ export function ProjectDetailScreen() {
               style={styles.composeInput}
               value={draftNote}
               onChangeText={setDraftNote}
-              placeholder="Add a note…"
+              placeholder={t('projects.notePlaceholder')}
               placeholderTextColor={theme.colors.textFaint}
               multiline
               maxLength={2000}
@@ -470,7 +474,7 @@ export function ProjectDetailScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <ScaledText style={styles.emptyText}>
-                {activeTab === 'active' ? 'No active tasks or appointments' : 'Nothing here yet'}
+                {activeTab === 'active' ? t('projects.emptyActiveItems') : t('projects.emptyPastItems')}
               </ScaledText>
             </View>
           }
@@ -487,7 +491,7 @@ export function ProjectDetailScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.sageDark} />
-            <ScaledText style={styles.fabSecondaryLabel}>Add task</ScaledText>
+            <ScaledText style={styles.fabSecondaryLabel}>{t('tasks.fabTask')}</ScaledText>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.fabSecondary}
@@ -495,7 +499,7 @@ export function ProjectDetailScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="calendar-outline" size={18} color={theme.colors.sageDark} />
-            <ScaledText style={styles.fabSecondaryLabel}>Add appointment</ScaledText>
+            <ScaledText style={styles.fabSecondaryLabel}>{t('tasks.fabAppointment')}</ScaledText>
           </TouchableOpacity>
         </View>
       )}
@@ -504,7 +508,7 @@ export function ProjectDetailScreen() {
         style={[styles.deleteRow, { paddingBottom: theme.spacing.md + insets.bottom }]}
         onPress={handleDelete}
       >
-        <ScaledText style={styles.deleteLabel}>Delete project</ScaledText>
+        <ScaledText style={styles.deleteLabel}>{t('projects.deleteButton')}</ScaledText>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );

@@ -7,7 +7,6 @@ export type OverviewItem =
 
 export interface OverviewSection {
   key: 'today' | 'thisWeek' | 'later' | 'done';
-  title: string;
   count: number;
   data: OverviewItem[];
 }
@@ -91,13 +90,13 @@ export function groupOverviewIntoSections(
 
   const sections: OverviewSection[] = [];
   if (todayItems.length > 0) {
-    sections.push({ key: 'today', title: 'Today', count: todayItems.length, data: sortItems(todayItems) });
+    sections.push({ key: 'today', count: todayItems.length, data: sortItems(todayItems) });
   }
   if (thisWeekItems.length > 0) {
-    sections.push({ key: 'thisWeek', title: 'This week', count: thisWeekItems.length, data: sortItems(thisWeekItems) });
+    sections.push({ key: 'thisWeek', count: thisWeekItems.length, data: sortItems(thisWeekItems) });
   }
   if (laterItems.length > 0) {
-    sections.push({ key: 'later', title: 'Later', count: laterItems.length, data: sortItems(laterItems) });
+    sections.push({ key: 'later', count: laterItems.length, data: sortItems(laterItems) });
   }
   return sections;
 }

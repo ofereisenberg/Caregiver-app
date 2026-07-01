@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Calendar, DateData } from 'react-native-calendars';
+import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '../../constants/theme';
@@ -25,7 +25,11 @@ import { Task } from '../../services/tasks';
 import { Vacation } from '../../services/vacations';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+
 import { toLocalISODate } from '../../utils/dateUtils';
+import { fmtTime, fmtLongWeekdayDate, fmtShortDate, fmtMonthYear } from '../../utils/formatters';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 
@@ -36,7 +40,6 @@ type CalendarItem =
 
 type CalendarMode = 'collapsed' | 'expanded';
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const WEEK_COL_WIDTH = 28;
 const DAY_COL_WIDTH = Math.floor((SCREEN_WIDTH - WEEK_COL_WIDTH - 2 * theme.spacing.screen) / 7);
@@ -93,22 +96,24 @@ function truncate(text: string, maxChars = 9): string {
   return text.length <= maxChars ? text : text.slice(0, maxChars - 1) + '…';
 }
 
-function formatApptTime(appt: Appointment): string {
-  if (appt.is_full_day) return 'All day';
-  const start = new Date(appt.starts_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+function formatApptTime(appt: Appointment, allDayLabel: string): string {
+  if (appt.is_full_day) return allDayLabel;
+  const start = fmtTime(appt.starts_at);
   if (!appt.ends_at) return start;
-  const end = new Date(appt.ends_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${start}–${end}`;
+  return `${start}–${fmtTime(appt.ends_at)}`;
 }
 
 function formatAgendaDate(dateKey: string): string {
   const d = new Date(dateKey + 'T00:00:00');
   if (isNaN(d.getTime())) return dateKey;
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  return fmtLongWeekdayDate(d);
 }
 
 export function CalendarScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
+
+  const DAY_LABELS = t('calendar.dayLetters', { returnObjects: true }) as string[];
   const { session } = useAuth();
   const currentUserId = session?.user.id ?? '';
 
@@ -144,6 +149,21 @@ export function CalendarScreen() {
     refreshTasks();
     refreshVacations();
   }, [refreshAppts, refreshTasks, refreshVacations]));
+
+  React.useEffect(() => {
+    const lang = i18n.language;
+    const monthNames = t('calendar.monthNames', { returnObjects: true }) as string[];
+    const dayNamesShort = t('calendar.dayNamesShort', { returnObjects: true }) as string[];
+    const dayNamesLong = t('calendar.dayNamesLong', { returnObjects: true }) as string[];
+    LocaleConfig.locales[lang] = {
+      monthNames,
+      monthNamesShort: monthNames.map((m) => m.slice(0, 3)),
+      dayNames: dayNamesLong,
+      dayNamesShort,
+      today: t('calendar.today'),
+    };
+    LocaleConfig.defaultLocale = lang;
+  }, [t]);
 
   const tasksWithDates = useMemo(
     () => taskSections.flatMap((s) => s.data).filter((t) => t.due_date !== null),
@@ -287,8 +307,7 @@ export function CalendarScreen() {
   // ── Expanded grid rendering ──────────────────────────────────────────────────
   function renderExpandedGrid() {
     const weekRows = buildWeekRows(currentYear, currentMonth);
-    const monthLabel = new Date(currentYear, currentMonth, 1)
-      .toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    const monthLabel = fmtMonthYear(new Date(currentYear, currentMonth, 1));
 
     return (
       <View {...expandedPan.panHandlers}>
@@ -422,9 +441,9 @@ export function CalendarScreen() {
           <View style={styles.rowContent}>
             <ScaledText style={styles.rowTitle}>{item.data.title}</ScaledText>
             <ScaledText style={styles.rowMeta}>
-              {new Date(item.data.start_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              {fmtShortDate(item.data.start_date + 'T00:00:00')}
               {' – '}
-              {new Date(item.data.end_date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              {fmtShortDate(item.data.end_date + 'T00:00:00')}
             </ScaledText>
           </View>
           <Ionicons name="chevron-forward" size={16} color={theme.colors.textHairline} />
@@ -444,7 +463,7 @@ export function CalendarScreen() {
           <View style={styles.apptMarker} />
           <View style={styles.rowContent}>
             <ScaledText style={styles.rowTitle}>{appt.title}</ScaledText>
-            <ScaledText style={styles.rowMeta}>{formatApptTime(appt)}</ScaledText>
+            <ScaledText style={styles.rowMeta}>{formatApptTime(appt, t('appointments.allDay'))}</ScaledText>
             {projectName && (
               <TouchableOpacity
                 style={styles.projectTag}
@@ -499,7 +518,7 @@ export function CalendarScreen() {
       <View style={styles.header}>
         <View>
           <ScaledText style={styles.circleName}>{circle?.name ?? 'Care Circle'}</ScaledText>
-          <ScaledText style={styles.screenTitle}>Calendar</ScaledText>
+          <ScaledText style={styles.screenTitle}>{t('calendar.screenTitle')}</ScaledText>
         </View>
         <TouchableOpacity
           style={styles.avatar}
@@ -519,7 +538,7 @@ export function CalendarScreen() {
           color={theme.colors.textMuted}
         />
         <ScaledText style={styles.modeHint}>
-          {calendarMode === 'collapsed' ? 'Expand' : 'Collapse'}
+          {calendarMode === 'collapsed' ? t('calendar.expand') : t('calendar.collapse')}
         </ScaledText>
       </View>
 
@@ -543,13 +562,13 @@ export function CalendarScreen() {
           {/* Day-event panel */}
           <View style={styles.agendaHeader} {...dayPanelPan.panHandlers}>
             <ScaledText style={styles.agendaDate}>
-              {selectedDay === today ? 'Today' : formatAgendaDate(selectedDay)}
+              {selectedDay === today ? t('calendar.today') : formatAgendaDate(selectedDay)}
             </ScaledText>
           </View>
 
           {selectedDayItems.length === 0 ? (
             <View style={styles.empty} {...dayPanelPan.panHandlers}>
-              <ScaledText style={styles.emptyText}>Nothing on this day</ScaledText>
+              <ScaledText style={styles.emptyText}>{t('calendar.nothingOnThisDay')}</ScaledText>
             </View>
           ) : (
             <FlatList
@@ -596,7 +615,7 @@ export function CalendarScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} />
             </View>
-            <ScaledText style={styles.fabMenuLabel}>Appointment</ScaledText>
+            <ScaledText style={styles.fabMenuLabel}>{t('tasks.fabAppointment')}</ScaledText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -607,7 +626,7 @@ export function CalendarScreen() {
             <View style={styles.fabMenuIcon}>
               <Ionicons name="airplane-outline" size={16} color={theme.colors.sage} />
             </View>
-            <ScaledText style={styles.fabMenuLabel}>Vacation</ScaledText>
+            <ScaledText style={styles.fabMenuLabel}>{t('calendar.fabVacation')}</ScaledText>
           </TouchableOpacity>
         </View>
       )}

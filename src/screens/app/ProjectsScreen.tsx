@@ -11,6 +11,9 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+import { fmtShortDate } from '../../utils/formatters';
+
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
@@ -24,12 +27,6 @@ import { personSelectionFromProject, resolvePersonName } from '../../types/Perso
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type ActiveTab = 'active' | 'done';
 
-const STATUS_LABEL: Record<string, string> = {
-  not_started: 'Not started',
-  in_progress: 'In progress',
-  done: 'Done',
-};
-
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   not_started: { bg: theme.colors.disabledBg, fg: theme.colors.textMuted },
   in_progress: { bg: theme.colors.sageTint, fg: theme.colors.sageDark },
@@ -38,8 +35,7 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
 
 function formatDueDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
-  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return fmtShortDate(dateStr.slice(0, 10) + 'T00:00:00');
 }
 
 interface ProjectRowProps {
@@ -50,6 +46,15 @@ interface ProjectRowProps {
 }
 
 function ProjectRow({ project, ownerName, isExternalOwner, onPress }: ProjectRowProps) {
+  const { t } = useTranslation();
+  const statusLabel = (() => {
+    const map: Record<string, string> = {
+      not_started: t('projects.statusNotStarted'),
+      in_progress: t('projects.statusInProgress'),
+      done: t('projects.statusDone'),
+    };
+    return map[project.status] ?? project.status;
+  })();
   const colors = STATUS_COLORS[project.status] ?? STATUS_COLORS.not_started;
   const dueStr = formatDueDate(project.due_date);
   const isDone = project.status === 'done';
@@ -67,7 +72,7 @@ function ProjectRow({ project, ownerName, isExternalOwner, onPress }: ProjectRow
         <View style={styles.rowMeta}>
           <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
             <ScaledText style={[styles.statusBadgeText, { color: colors.fg }]}>
-              {STATUS_LABEL[project.status] ?? project.status}
+              {statusLabel}
             </ScaledText>
           </View>
           {ownerName && (
@@ -76,7 +81,7 @@ function ProjectRow({ project, ownerName, isExternalOwner, onPress }: ProjectRow
             </ScaledText>
           )}
           {dueStr && (
-            <ScaledText style={styles.dueText}>Due {dueStr}</ScaledText>
+            <ScaledText style={styles.dueText}>{t('projects.duePrefix', { date: dueStr })}</ScaledText>
           )}
         </View>
       </View>
@@ -86,6 +91,7 @@ function ProjectRow({ project, ownerName, isExternalOwner, onPress }: ProjectRow
 }
 
 export function ProjectsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { session } = useAuth();
   const { circle, members, loading: circleLoading } = useCircle();
@@ -118,7 +124,7 @@ export function ProjectsScreen() {
       <View style={styles.header}>
         <View>
           <ScaledText style={styles.circleName}>{circle?.name ?? ''}</ScaledText>
-          <ScaledText style={styles.headerTitle}>Projects</ScaledText>
+          <ScaledText style={styles.headerTitle}>{t('projects.screenTitle')}</ScaledText>
         </View>
         <TouchableOpacity
           style={styles.avatar}
@@ -136,7 +142,7 @@ export function ProjectsScreen() {
           onPress={() => setActiveTab('active')}
         >
           <ScaledText style={[styles.tabLabel, activeTab === 'active' && styles.tabLabelActive]}>
-            Active{activeProjects.length > 0 ? ` (${activeProjects.length})` : ''}
+            {activeProjects.length > 0 ? `${t('projects.tabActive')} (${activeProjects.length})` : t('projects.tabActive')}
           </ScaledText>
         </TouchableOpacity>
         <TouchableOpacity
@@ -144,7 +150,7 @@ export function ProjectsScreen() {
           onPress={() => setActiveTab('done')}
         >
           <ScaledText style={[styles.tabLabel, activeTab === 'done' && styles.tabLabelActive]}>
-            Completed{doneProjects.length > 0 ? ` (${doneProjects.length})` : ''}
+            {doneProjects.length > 0 ? `${t('projects.tabCompleted')} (${doneProjects.length})` : t('projects.tabCompleted')}
           </ScaledText>
         </TouchableOpacity>
       </View>
@@ -157,11 +163,11 @@ export function ProjectsScreen() {
         <View style={styles.emptyState}>
           <Ionicons name="folder-outline" size={48} color={theme.colors.textFaint} />
           <ScaledText style={styles.emptyTitle}>
-            {activeTab === 'active' ? 'No active projects' : 'No completed projects'}
+            {activeTab === 'active' ? t('projects.emptyActive') : t('projects.emptyCompleted')}
           </ScaledText>
           {activeTab === 'active' && (
             <ScaledText style={styles.emptySubtitle}>
-              Projects help you group related tasks and appointments into one place.
+              {t('projects.emptySubtitle')}
             </ScaledText>
           )}
         </View>

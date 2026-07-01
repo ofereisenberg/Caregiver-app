@@ -14,6 +14,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useTranslation } from 'react-i18next';
+
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCircle } from '../../hooks/useCircle';
@@ -22,13 +24,12 @@ import { updateVacation } from '../../services/vacations';
 import { ScaledText } from '../../components/ScaledText';
 import { AppStackParamList } from '../../navigation/types';
 import { toLocalISODate } from '../../utils/dateUtils';
+import { fmtWeekdayDateYear } from '../../utils/formatters';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 type Route = RouteProp<AppStackParamList, 'EditVacation'>;
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-}
+const formatDate = fmtWeekdayDateYear;
 
 function toDateString(date: Date): string {
   return toLocalISODate(date);
@@ -43,6 +44,7 @@ function oneWeekLater(from: Date): Date {
 type DateField = 'start' | 'end';
 
 export function EditVacationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { vacationId } = route.params;
@@ -161,12 +163,12 @@ export function EditVacationScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <ScaledText style={styles.heading}>Edit vacation</ScaledText>
+        <ScaledText style={styles.heading}>{t('calendar.editVacationHeading')}</ScaledText>
 
         <TextInput
           ref={titleRef}
           style={styles.titleInput}
-          placeholder="e.g. Sam is in Denmark"
+          placeholder={t('calendar.vacationTitlePlaceholder')}
           placeholderTextColor={theme.colors.textFaint}
           value={title}
           onChangeText={setTitle}
@@ -180,7 +182,7 @@ export function EditVacationScreen() {
         <TouchableOpacity style={styles.expandRow} onPress={() => openDatePicker('start')}>
           <View style={styles.rowLeft}>
             <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} style={styles.rowIcon} />
-            <ScaledText style={styles.expandRowLabel}>From</ScaledText>
+            <ScaledText style={styles.expandRowLabel}>{t('calendar.vacationFrom')}</ScaledText>
           </View>
           <ScaledText style={styles.expandRowValue}>{formatDate(startDate)}</ScaledText>
         </TouchableOpacity>
@@ -200,7 +202,7 @@ export function EditVacationScreen() {
         <TouchableOpacity style={styles.expandRow} onPress={() => openDatePicker('end')}>
           <View style={styles.rowLeft}>
             <Ionicons name="calendar-outline" size={16} color={theme.colors.sage} style={styles.rowIcon} />
-            <ScaledText style={styles.expandRowLabel}>Until</ScaledText>
+            <ScaledText style={styles.expandRowLabel}>{t('calendar.vacationUntil')}</ScaledText>
           </View>
           <ScaledText style={styles.expandRowValue}>{formatDate(endDate)}</ScaledText>
         </TouchableOpacity>
@@ -222,14 +224,14 @@ export function EditVacationScreen() {
             <TouchableOpacity style={styles.expandRow} onPress={() => setExpandWith((v) => !v)}>
               <View style={styles.rowLeft}>
                 <Ionicons name="people-outline" size={16} color={theme.colors.sage} style={styles.rowIcon} />
-                <ScaledText style={styles.expandRowLabel}>With</ScaledText>
+                <ScaledText style={styles.expandRowLabel}>{t('appointments.withLabel')}</ScaledText>
               </View>
               <ScaledText style={styles.expandRowValue}>
                 {withMemberIds.length === 0
-                  ? 'Nobody'
+                  ? t('appointments.nobody')
                   : withMemberIds.length === 1
-                  ? members.find((m) => m.user_id === withMemberIds[0])?.displayName ?? '1 person'
-                  : `${withMemberIds.length} people`}
+                  ? members.find((m) => m.user_id === withMemberIds[0])?.displayName ?? t('calendar.vacationPeople', { count: 1 })
+                  : t('calendar.vacationPeople', { count: withMemberIds.length })}
               </ScaledText>
             </TouchableOpacity>
             {expandWith && (
@@ -268,7 +270,7 @@ export function EditVacationScreen() {
           {saving ? (
             <ActivityIndicator color={theme.colors.surface} />
           ) : (
-            <ScaledText style={styles.addButtonLabel}>Save changes</ScaledText>
+            <ScaledText style={styles.addButtonLabel}>{t('appointments.saveButton')}</ScaledText>
           )}
         </TouchableOpacity>
       </ScrollView>
